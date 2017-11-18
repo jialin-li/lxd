@@ -681,6 +681,35 @@ void forkgetnet(char *buf, char *cur, ssize_t size) {
 	// The rest happens in Go
 }
 
+void proxystart(char *buf, char *cur, ssize_t size) {
+	int cmdline, listen_pid, connect_pid;
+
+	// Get the arguments
+	ADVANCE_ARG_REQUIRED();
+	listen_pid = atoi(cur);
+	ADVANCE_ARG_REQUIRED();
+	ADVANCE_ARG_REQUIRED();
+	connect_pid = atoi(cur);
+	ADVANCE_ARG_REQUIRED();
+
+	// Join the listener ns if not already setup
+	if (access("/proc/self/fd/100", F_OK) < 0) {
+		// Attach to the network namespace of the listener
+		if (dosetns(listen_pid, "net") < 0) {
+			fprintf(stderr, "Failed setns to listener network namespace: %s\n", strerror(errno));
+			_exit(1);
+		}
+	} else {
+		// Join the connector ns now
+		if (dosetns(connect_pid, "net") < 0) {
+			fprintf(stderr, "Failed setns to connector network namespace: %s\n", strerror(errno));
+			_exit(1);
+		}
+	}
+
+	// We're done, jump back to Go
+}
+
 __attribute__((constructor)) void init(void) {
 	int cmdline;
 	char buf[CMDLINE_SIZE];
@@ -723,6 +752,8 @@ __attribute__((constructor)) void init(void) {
 		forkumount(buf, cur, size);
 	} else if (strcmp(cur, "forkgetnet") == 0) {
 		forkgetnet(buf, cur, size);
+	} else if (strcmp(cur, "") == 0) {
+		proxystart(buf, cur, size);
 	}
 }
 */
