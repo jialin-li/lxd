@@ -691,9 +691,14 @@ void proxy(char *buf, char *cur, ssize_t size) {
 	ADVANCE_ARG_REQUIRED();
 	connect_pid = atoi(cur);
 	ADVANCE_ARG_REQUIRED();
+	while (*cur != 0)				
+			cur++;
+	char fdpath[80];
+	sprintf(fdpath, "/proc/self/fd/%s", cur);
+    
 
 	// Join the listener ns if not already setup
-	if (access("/proc/self/fd/100", F_OK) < 0) {
+	if (access(fdpath, F_OK) < 0) {
 		// Attach to the network namespace of the listener
 		if (dosetns(listen_pid, "net") < 0) {
 			fprintf(stderr, "Failed setns to listener network namespace: %s\n", strerror(errno));

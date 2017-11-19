@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"syscall"
+	"strconv"
 
 	"github.com/lxc/lxd/shared"
 )
@@ -22,7 +23,7 @@ func cmdProxy(args *Args) {
 }
 
 func run(args *Args) error {
-	if len(args.Params) != 5 {
+	if (len(args.Params) < 5) ||  (len(args.Params) > 6) {
 		return fmt.Errorf("Invalid arguments")
 	}
 
@@ -31,9 +32,14 @@ func run(args *Args) error {
 	listenAddr := args.Params[2]
 	connectPid := args.Params[3]
 	connectAddr := args.Params[4]
+	fd := "-1"
+	if len(args.Params) == 6 {
+		fd = args.Params[5]
+	}
+	
 
 	// Check where we are in initialization
-	if !shared.PathExists("/proc/self/fd/100") {
+	if !shared.PathExists(fmt.Sprintf("/proc/self/fd/%s", fd)) {
 		fmt.Printf("Listening on %s in %s, forwarding to %s from %s\n", listenAddr, listenPid, connectAddr, connectPid)
 		fmt.Printf("Setting up the listener\n")
 
@@ -43,14 +49,13 @@ func run(args *Args) error {
 		}
 		defer file.Close()
 
-		fd := file.Fd()
-		err = syscall.Dup3(int(fd), 100, 0)
+		listenerFd := file.Fd()
 		if err != nil {
 			return fmt.Errorf("failed to duplicate the listener fd: %v", err)
 		}
 
 		fmt.Printf("Re-executing ourselves\n")
-		err = syscall.Exec("/proc/self/exe", os.Args, []string{})
+		err = syscall.Exec("/proc/self/exe", append(os.Args, strconv.Itoa(int(listenerFd))), []string{})
 		if err != nil {
 			return fmt.Errorf("failed to re-exec: %v", err)
 		}
