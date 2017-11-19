@@ -681,7 +681,7 @@ void forkgetnet(char *buf, char *cur, ssize_t size) {
 	// The rest happens in Go
 }
 
-void proxystart(char *buf, char *cur, ssize_t size) {
+void proxy(char *buf, char *cur, ssize_t size) {
 	int cmdline, listen_pid, connect_pid;
 
 	// Get the arguments
@@ -753,7 +753,7 @@ __attribute__((constructor)) void init(void) {
 	} else if (strcmp(cur, "forkgetnet") == 0) {
 		forkgetnet(buf, cur, size);
 	} else if (strcmp(cur, "") == 0) {
-		proxystart(buf, cur, size);
+		proxy(buf, cur, size);
 	}
 }
 */
