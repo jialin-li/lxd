@@ -56,7 +56,6 @@ var subcommands = map[string]SubCommand{
 	"shutdown":         cmdShutdown,
 	"waitready":        cmdWaitReady,
 	"import":           cmdImport,
-	"proxy":			cmdProxy,
 
 	// Internal commands
 	"forkconsole":        cmdForkConsole,

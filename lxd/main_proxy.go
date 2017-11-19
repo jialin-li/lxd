@@ -11,9 +11,8 @@ import (
 	"github.com/lxc/lxd/shared"
 )
 
-func cmdProxy(args *Args) error {
-	shared.VarPath("networks", network, "dnsmasq.hosts")
-	err := run()
+func cmdProxy(args *Args) {
+	err := run(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
@@ -38,14 +37,9 @@ func run(args *Args) error {
 		fmt.Printf("Listening on %s in %s, forwarding to %s from %s\n", listenAddr, listenPid, connectAddr, connectPid)
 		fmt.Printf("Setting up the listener\n")
 
-		listener, err := setUpListener(listenAddr)
+		file, err := setUpFile(listenAddr)
 		if err != nil {
 			return err
-		}
-
-		file, err := listener.File()
-		if err != nil {
-			return fmt.Errorf("failed to extra fd from listener: %v", err)
 		}
 		defer file.Close()
 
@@ -94,44 +88,52 @@ func run(args *Args) error {
 	return nil
 }
 
-func setUpListener(listenAddr String) (net.Listener, error) {
+func setUpFile (listenAddr string) (os.File, error) {
 	fields := strings.SplitN(listenAddr, ":", 2)
 
 	if (fields[0] == "unix") {
-		return socketUnixListen(fields[1])
+		return unixFile(fields[1])
 	} else if (fields[0] == "tcp") {
-		return socketTCPListen(fields[1])
+		return tcpFile(fields[1])
 	}
-	return nil, fmt.Errorf("cannot resolve listener of type: %v", fields[0])
+	return os.File{}, fmt.Errorf("cannot resolve file from network type: %v", fields[0])
 }
 
-func socketUnixListen(path string) (net.Listener, error) {
+func unixFile(path string) (os.File, error) {
 	addr, err := net.ResolveUnixAddr("unix", path)
 	if err != nil {
-		return nil, fmt.Errorf("cannot resolve socket address: %v", err)
+		return os.File{}, fmt.Errorf("cannot resolve socket address: %v", err)
 	}
 
 	listener, err := net.ListenUnix("unix", addr)
 	if err != nil {
-		return nil, fmt.Errorf("cannot bind socket: %v", err)
+		return os.File{}, fmt.Errorf("cannot bind socket: %v", err)
 	}
 
-	return listener, err
+	file, err := listener.File()
+	if err != nil {
+		return os.File{}, fmt.Errorf("failed to extra fd from listener: %v", err)
+	}
 
+	return *file, err
 }
 
-func socketTCPListen(path string) (net.Listener, error) {
+func tcpFile (path string) (os.File, error) {
 	addr, err := net.ResolveTCPAddr("tcp", path)
 	if err != nil {
-		return nil, fmt.Errorf("cannot resolve socket address: %v", err)
+		return os.File{}, fmt.Errorf("cannot resolve socket address: %v", err)
 	}
 
 	listener, err := net.ListenTCP("tcp", addr)
 	if err != nil {
-		return nil, fmt.Errorf("cannot bind socket: %v", err)
+		return os.File{}, fmt.Errorf("cannot bind socket: %v", err)
 	}
 
-	return listener, err
+	file, err := listener.File()
+	if err != nil {
+		return os.File{}, fmt.Errorf("failed to extra fd from listener: %v", err)
+	}
 
+	return *file, err
 }
 
