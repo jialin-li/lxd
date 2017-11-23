@@ -12,7 +12,7 @@ import (
 	"github.com/lxc/lxd/shared"
 )
 
-func cmdProxy(args *Args) {
+func cmdProxyDevStart(args *Args) error {
 	err := run(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -20,6 +20,7 @@ func cmdProxy(args *Args) {
 	}
 
 	os.Exit(0)
+	return nil
 }
 
 func run(args *Args) error {
@@ -32,14 +33,11 @@ func run(args *Args) error {
 	listenAddr := args.Params[2]
 	connectPid := args.Params[3]
 	connectAddr := args.Params[4]
-	fd := "-1"
-	if len(args.Params) == 6 {
-		fd = args.Params[5]
-	}
-	
+	fd, _ := strconv.Atoi(args.Params[5])
+
 
 	// Check where we are in initialization
-	if !shared.PathExists(fmt.Sprintf("/proc/self/fd/%s", fd)) {
+	if !shared.PathExists(fmt.Sprintf("/proc/self/fd/%d", fd)) {
 		fmt.Printf("Listening on %s in %s, forwarding to %s from %s\n", listenAddr, listenPid, connectAddr, connectPid)
 		fmt.Printf("Setting up the listener\n")
 
@@ -62,7 +60,7 @@ func run(args *Args) error {
 	}
 
 	// Re-create listener from fd
-	listenFile := os.NewFile(100, "listener")
+	listenFile := os.NewFile(uintptr(fd), "listener")
 	listener, err := net.FileListener(listenFile)
 	if err != nil {
 		return fmt.Errorf("failed to re-assemble listener: %v", err)

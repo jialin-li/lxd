@@ -681,8 +681,8 @@ void forkgetnet(char *buf, char *cur, ssize_t size) {
 	// The rest happens in Go
 }
 
-void proxy(char *buf, char *cur, ssize_t size) {
-	int cmdline, listen_pid, connect_pid;
+void proxydevstart(char *buf, char *cur, ssize_t size) {
+	int cmdline, listen_pid, connect_pid, fdnum;
 
 	// Get the arguments
 	ADVANCE_ARG_REQUIRED();
@@ -691,10 +691,12 @@ void proxy(char *buf, char *cur, ssize_t size) {
 	ADVANCE_ARG_REQUIRED();
 	connect_pid = atoi(cur);
 	ADVANCE_ARG_REQUIRED();
-	while (*cur != 0)				
-			cur++;
+	ADVANCE_ARG_REQUIRED();
+	fdnum = atoi(cur);
+
 	char fdpath[80];
-	sprintf(fdpath, "/proc/self/fd/%s", cur);
+	sprintf(fdpath, "/proc/self/fd/%d", fdnum);
+
     
 
 	// Join the listener ns if not already setup
@@ -757,8 +759,8 @@ __attribute__((constructor)) void init(void) {
 		forkumount(buf, cur, size);
 	} else if (strcmp(cur, "forkgetnet") == 0) {
 		forkgetnet(buf, cur, size);
-	} else if (strcmp(cur, "") == 0) {
-		proxy(buf, cur, size);
+	} else if (strcmp(cur, "proxydevstart") == 0) {
+		proxydevstart(buf, cur, size);
 	}
 }
 */
