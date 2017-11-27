@@ -24,7 +24,7 @@ func cmdProxyDevStart(args *Args) error {
 }
 
 func run(args *Args) error {
-	if (len(args.Params) < 5) ||  (len(args.Params) > 6) {
+	if (len(args.Params) != 6) {
 		return fmt.Errorf("Invalid arguments")
 	}
 
@@ -53,7 +53,9 @@ func run(args *Args) error {
 		}
 
 		fmt.Printf("Re-executing ourselves\n")
-		err = syscall.Exec("/proc/self/exe", append(os.Args, strconv.Itoa(int(listenerFd))), []string{})
+
+		args.Params[5] = strconv.Itoa(int(listenerFd))
+		err = syscall.Exec("/proc/self/exe", args.Params, []string{})
 		if err != nil {
 			return fmt.Errorf("failed to re-exec: %v", err)
 		}
