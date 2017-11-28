@@ -4043,7 +4043,12 @@ func (c *containerLXC) Update(args db.ContainerArgs, userRequested bool) error {
 					logger.Error(msg)
 					return fmt.Errorf(msg)
 				}
-			}
+			} else if m["type"] == "proxy" {
+				err = c.insertProxyDevice(m)
+				if err != nil {
+					return err
+				}
+			} 
 		}
 
 		err = c.addDiskDevices(diskDevices, c.insertDiskDevice)
@@ -5966,6 +5971,50 @@ func (c *containerLXC) removeUnixDevices() error {
 		}
 	}
 
+	return nil
+}
+
+func (c *containerLXC) insertProxyDevice(m types.Device) error {
+	if !c.IsRunning() {
+		return fmt.Errorf("Can't add proxy device to stopped container")
+	}
+
+	state, err := c.RenderState()
+	if err != nil {
+		return fmt.Errorf("Could not get pid of container")
+	}
+
+	containerPid := strconv.Itoa(int(state.Pid))
+	lxdPid := strconv.Itoa(os.Getpid())
+
+	connectAddr := m["connect"]
+	listenAddr := m["listen"]
+
+	listenPid := "-1"
+	connectPid := "-1"
+
+	if (m["bind"] == "container") {
+		listenPid = containerPid
+		connectPid = lxdPid
+	} else if (m["bind"] == "host") {
+		listenPid = lxdPid
+		connectPid = containerPid
+	} else {
+		return fmt.Errorf("Incorrect bind location given. Must bind in container or host")
+	}
+
+	_, err = shared.RunCommand(
+					c.state.OS.ExecPath,
+					"proxydevstart",
+					listenPid,
+					listenAddr,
+					connectPid,
+					connectAddr,
+					"-1")
+	
+	if err != nil {
+		return fmt.Errorf("Error occurred when starting proxy device")
+	}
 	return nil
 }
 
