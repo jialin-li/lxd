@@ -853,7 +853,7 @@ func RunCommandGetPid(name string, arg ...string) (int, string, error) {
 			Err: err,
 		}
 		
-		fmt.Printf("the error was %s", err)
+
 		return -1, string(output), err
 	}
 	
