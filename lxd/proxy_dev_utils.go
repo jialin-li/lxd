@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strings"
 	"strconv"
 	"sync"
 
@@ -20,81 +19,34 @@ type proxyProcInfo struct {
 	listenAddr		string
 }
 
-func appendProxyDevInfoFile(containerName string, proxyInfo string) error {
+func createProxyDevInfoFile(containerName string, proxyDev string, proxyPid int) error {
 	proxyDevFileLock.Lock()
 	defer proxyDevFileLock.Unlock()
 
-	filePath := shared.VarPath("networks", "proxy", containerName)
-	f, err := os.OpenFile(filePath, os.O_APPEND | os.O_WRONLY | os.O_CREATE, 0644)
+	filePath := shared.VarPath("devices", containerName, proxyDev)
+	f, err := os.Create(filePath)
+
 	if err != nil {
-		// couldn't open/create the file 
 		return err 
 	}
 
 	defer f.Close()
-	
-	_, err = f.Write([]byte(proxyInfo))
-	if err != nil {
-		return err
-	}
 
-	return nil
-} 
+	info := fmt.Sprintf("%d", proxyPid)
+	_, err = f.WriteString(info)
 
-func removeProxyDevInfoEntry(containerName string, proxyInfo string) error {
-	proxyDevFileLock.Lock()
-	defer proxyDevFileLock.Unlock()
-
-	proxyDevFilePath := shared.VarPath("networks", "proxy", containerName)
-	buf, err := ioutil.ReadFile(proxyDevFilePath)
-	fileContents := string(buf)
-
-	newContents := strings.Replace(fileContents, proxyInfo, "", -1)
-	err = ioutil.WriteFile(proxyDevFilePath, []byte(newContents), 0644)
 	return err
 }
 
-func restartProxyDev(d *Daemon, containerName string, proxyInfo string) error {
-	// get name of target proxy device
-	fields := strings.Split(proxyInfo, ":")
-	targetDev := fields[1]
+// for use when the user wants to delete a proxy device
+func removeProxyDevInfoFile(containerName string, proxyDev string) error {
+	proxyDevFileLock.Lock()
+	defer proxyDevFileLock.Unlock()
 
-	// get the container by the container name
-	c, err := containerLoadByName(d.State(), containerName)
+	proxyDevFilePath := shared.VarPath("devices", containerName, proxyDev)
+	err := os.Remove(proxyDevFilePath)		
 
-	if !c.IsRunning() {
-		return fmt.Errorf("Cannot restart proxy device for a stopped container")
-	}
-
-	// get the list of devices and check if it contains our target dev
-	allDevices := c.LocalDevices() 
-	if !allDevices.ContainsName(targetDev) {
-		return fmt.Errorf("Exited proxy device could not be found to restart")
-	}
-	
-	proxyValues, err := setupProxyProcInfo(c, allDevices[targetDev])
-
-	// run the command, right now haven't figured out how to 
-	proxyPid, _, err := shared.RunCommandGetPid(
-					c.DaemonState().OS.ExecPath,
-					"proxydevstart",
-					proxyValues.listenPid,
-					proxyValues.listenAddr,
-					proxyValues.connectPid,
-					proxyValues.connectAddr,
-					"-1")	
-	if err != nil {
-		return err 
-	}
-
-	newProxyInfoPair := fmt.Sprintf("%d:%s\n", proxyPid, targetDev)
-
-	err = appendProxyDevInfoFile(containerName, newProxyInfoPair)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func setupProxyProcInfo(c container, device map[string]string) (*proxyProcInfo, error) {	
@@ -134,22 +86,38 @@ func setupProxyProcInfo(c container, device map[string]string) (*proxyProcInfo, 
 }
 
 func killAllProxyProcs(containerName string) error {
-	proxyDevInfoPath := shared.VarPath("networks", "proxy", containerName)	
-	buf, err := ioutil.ReadFile(proxyDevInfoPath)	
+	proxyDevicesPath := shared.VarPath("devices", containerName)
+
+	files, err := ioutil.ReadDir(proxyDevicesPath)	
 
 	if err != nil {
-		return err
+		return fmt.Errorf("Error reading directory of container proxy devices")
 	}
 
-	contents := string(buf)
-	err = os.Remove(proxyDevInfoPath)	
+	for _, proxyInfo := range files {
+		devname := proxyInfo.Name()
 
-	for _, proxyInfo := range strings.Split(contents, "\n") {
-		fields := strings.Split(proxyInfo, ":")
-		proxyPid, _ := strconv.Atoi(fields[0]) 
-		p, _ := os.FindProcess(proxyPid)
-		err = p.Kill()
-	}	
-	
+		pathToFile := fmt.Sprintf("%s/%s", proxyDevicesPath, devname)
+		contents, err := ioutil.ReadFile(pathToFile)
+
+		if err != nil {
+			continue
+		}
+
+		// NOTE:	don't remove file so we have easy access 
+		// 			to device names when restoring
+		os.Truncate(pathToFile, 0)
+
+		pid, _ := strconv.Atoi(string(contents))
+		process, _ := os.FindProcess(pid)
+
+		if err != nil {
+			continue
+		}
+
+		process.Kill()
+
+	}
+
 	return nil
 }

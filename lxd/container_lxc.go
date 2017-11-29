@@ -5998,8 +5998,8 @@ func (c *containerLXC) insertProxyDevice(m types.Device) error {
 		return fmt.Errorf("Error occurred when starting proxy device")
 	}
 
-	proxyInfoPair := fmt.Sprintf("%d:%s\n", proxyPid, m)	
-	err = appendProxyDevInfoFile(c.name, proxyInfoPair)
+	proxyDevName := m["name"]
+	err = createProxyDevInfoFile(c.name, proxyDevName, proxyPid)
 	
 	return nil
 }
