@@ -3950,6 +3950,11 @@ func (c *containerLXC) Update(args db.ContainerArgs, userRequested bool) error {
 						}
 					}
 				}
+			} else if m["type"] == "proxy" {
+				err = c.removeProxyDevice(k)
+				if err != nil {
+					return err
+				}
 			}
 		}
 
@@ -4044,7 +4049,7 @@ func (c *containerLXC) Update(args db.ContainerArgs, userRequested bool) error {
 					return fmt.Errorf(msg)
 				}
 			} else if m["type"] == "proxy" {
-				err = c.insertProxyDevice(m)
+				err = c.insertProxyDevice(k, m)
 				if err != nil {
 					return err
 				}
@@ -5974,7 +5979,7 @@ func (c *containerLXC) removeUnixDevices() error {
 	return nil
 }
 
-func (c *containerLXC) insertProxyDevice(m types.Device) error {
+func (c *containerLXC) insertProxyDevice(name string, m types.Device) error {
 	if !c.IsRunning() {
 		return fmt.Errorf("Can't add proxy device to stopped container")
 	}
@@ -5985,7 +5990,7 @@ func (c *containerLXC) insertProxyDevice(m types.Device) error {
 		return err
 	}
 
-	proxyPid,_, err := shared.RunCommandGetPid(
+	proxyPid, _, err := shared.RunCommandGetPid(
 					c.state.OS.ExecPath,
 					"proxydevstart",
 					proxyValues.listenPid,
@@ -5998,9 +6003,23 @@ func (c *containerLXC) insertProxyDevice(m types.Device) error {
 		return fmt.Errorf("Error occurred when starting proxy device")
 	}
 
-	proxyInfoPair := fmt.Sprintf("%d:%s\n", proxyPid, m)	
+	proxyInfoPair := fmt.Sprintf("%d:%s\n", proxyPid, name)	
 	err = appendProxyDevInfoFile(c.name, proxyInfoPair)
 	
+	return nil
+}
+
+func (c *containerLXC) removeProxyDevice(name string) error {
+	if !c.IsRunning() {
+		return fmt.Errorf("Can't remove proxy device from stopped container")
+	}
+
+	err := killProxyProc(c.name, name)
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

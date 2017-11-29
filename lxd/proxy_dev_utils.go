@@ -98,13 +98,12 @@ func restartProxyDev(d *Daemon, containerName string, proxyInfo string) error {
 }
 
 func setupProxyProcInfo(c container, device map[string]string) (*proxyProcInfo, error) {	
-	state, err := c.RenderState()
-
-	if err != nil {
-		return nil, fmt.Errorf("Could not get pid of container")
+	pid := c.InitPID()
+	if pid == -1 {
+		return nil, fmt.Errorf("Cannot add proxy device to stopped container")
 	}
 
-	containerPid := strconv.Itoa(int(state.Pid))
+	containerPid := strconv.Itoa(int(pid))
 	lxdPid := strconv.Itoa(os.Getpid())
 
 	connectAddr := device["connect"]
@@ -152,4 +151,27 @@ func killAllProxyProcs(containerName string) error {
 	}	
 	
 	return nil
+}
+
+func killProxyProc(containerName string, devName string) error {
+	proxyDevInfoPath := shared.VarPath("networks", "proxy", containerName)	
+	buf, err := ioutil.ReadFile(proxyDevInfoPath)
+
+	if err != nil {
+		return err
+	}
+
+	contents := string(buf)
+
+	for _, proxyInfo := range strings.Split(contents, "\n") {
+		fields := strings.Split(proxyInfo, ":")
+		if fields[1] == devName {
+			proxyPid, _ := strconv.Atoi(fields[0]) 
+			p, _ := os.FindProcess(proxyPid)
+			err = p.Kill()
+			return err
+		}
+	}
+	
+	return fmt.Errorf("No proxy process running for given device name")
 }
