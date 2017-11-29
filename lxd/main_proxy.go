@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"	
 	"net"
 	"os"	
 	"strings"
@@ -70,11 +69,6 @@ func run(args *Args) error {
 	}
 
 	fmt.Printf("Starting to proxy\n")
-
-	// write proxy pid to master file for lxd
-	args.Params[5] =  strconv.Itoa(-1)
-	fileEntry := fmt.Sprintf("%d:%s\n", os.Getpid(), strings.Join(args.Params[0:], " "))
-	err = ioutil.WriteFile(shared.VarPath("devices","proxy", "proxies.info"), []byte(fileEntry), 0644)
 
 	// begin proxying
 	for {

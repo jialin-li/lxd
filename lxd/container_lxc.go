@@ -5979,42 +5979,28 @@ func (c *containerLXC) insertProxyDevice(m types.Device) error {
 		return fmt.Errorf("Can't add proxy device to stopped container")
 	}
 
-	state, err := c.RenderState()
+	proxyValues, err := setupProxyProcInfo(c, m)
+
 	if err != nil {
-		return fmt.Errorf("Could not get pid of container")
+		return err
 	}
 
-	containerPid := strconv.Itoa(int(state.Pid))
-	lxdPid := strconv.Itoa(os.Getpid())
-
-	connectAddr := m["connect"]
-	listenAddr := m["listen"]
-
-	listenPid := "-1"
-	connectPid := "-1"
-
-	if (m["bind"] == "container") {
-		listenPid = containerPid
-		connectPid = lxdPid
-	} else if (m["bind"] == "host") {
-		listenPid = lxdPid
-		connectPid = containerPid
-	} else {
-		return fmt.Errorf("Incorrect bind location given. Must bind in container or host")
-	}
-
-	_, err = shared.RunCommand(
+	proxyPid,_, err := shared.RunCommandGetPid(
 					c.state.OS.ExecPath,
 					"proxydevstart",
-					listenPid,
-					listenAddr,
-					connectPid,
-					connectAddr,
-					"-1")
-	
+					proxyValues.listenPid,
+					proxyValues.listenAddr,
+					proxyValues.connectPid,
+					proxyValues.connectAddr,
+					"-1")					
+			
 	if err != nil {
 		return fmt.Errorf("Error occurred when starting proxy device")
 	}
+
+	proxyInfoPair := fmt.Sprintf("%d:%s\n", proxyPid, m)	
+	err = appendProxyDevInfoFile(c.name, proxyInfoPair)
+	
 	return nil
 }
 

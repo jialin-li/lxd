@@ -6,11 +6,13 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"io/ioutil"		
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"	
 	"strings"
 	"sync"
 	"syscall"
@@ -437,6 +439,12 @@ func (d *Daemon) init() error {
 		return fmt.Errorf("cannot start API endpoints: %v", err)
 	}
 
+	// check all proxy devices are running and restart the ones that aren't
+	err = checkProxyDevProcesses(d)
+	if err != nil {
+		return err
+	}
+
 	// Run the post initialization actions
 	err = d.Ready()
 	if err != nil {
@@ -627,5 +635,43 @@ func initializeDbObject(d *Daemon) error {
 		return fmt.Errorf("Error creating database: %s", err)
 	}
 
+	return nil
+}
+
+func checkProxyDevProcesses(d *Daemon) error {
+	proxyDirPath := shared.VarPath("networks", "proxy")
+	containerFiles, _ := ioutil.ReadDir(proxyDirPath)
+
+	for _, file := range containerFiles {
+		containerName := file.Name()
+
+		// read in contents of the file then delete 
+		buf, err := ioutil.ReadFile(proxyDirPath + "/" + containerName)
+		if err != nil {
+			continue
+		}
+
+		fileContents := string(buf)
+		err = os.Remove(proxyDirPath + "/" + containerName)
+		if err != nil {
+			continue
+		}
+
+		for _, proxyInfo := range strings.Split(fileContents, "\n") {
+			fields := strings.Split(proxyInfo, ":")
+
+			// find the process and see if it's alive
+			proxyPid, _ := strconv.Atoi(fields[0]) 
+			p, _ := os.FindProcess(proxyPid)
+			err = p.Signal(syscall.Signal(0))
+
+			if err != nil {
+				restartProxyDev(d, containerName, proxyInfo)
+				continue
+			}
+
+			err = appendProxyDevInfoFile(containerName, proxyInfo)
+		}
+	}
 	return nil
 }
