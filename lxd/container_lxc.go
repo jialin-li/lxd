@@ -3950,6 +3950,11 @@ func (c *containerLXC) Update(args db.ContainerArgs, userRequested bool) error {
 						}
 					}
 				}
+			} else if m["type"] == "proxy" {
+				err = c.removeProxyDevice(k)
+				if err != nil {
+					return err
+				}
 			}
 		}
 
@@ -5985,7 +5990,7 @@ func (c *containerLXC) insertProxyDevice(name string, m types.Device) error {
 		return err
 	}
 
-	proxyPid,_, err := shared.RunCommandGetPid(
+	proxyPid, _, err := shared.RunCommandGetPid(
 					c.state.OS.ExecPath,
 					"proxydevstart",
 					proxyValues.listenPid,
@@ -6001,6 +6006,20 @@ func (c *containerLXC) insertProxyDevice(name string, m types.Device) error {
 	err = createProxyDevInfoFile(c.name, name, proxyPid)
 	
 	return nil
+}
+
+func (c *containerLXC) removeProxyDevice(name string) error {
+	if !c.IsRunning() {
+		return fmt.Errorf("Can't remove proxy device from stopped container")
+	} 
+
+	err := killProxyProc(c.name, name)
+
+	if err != nil {
+		return err
+	}
+
+ 	return nil
 }
 
 // Network device handling

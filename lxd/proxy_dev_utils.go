@@ -108,8 +108,13 @@ func killAllProxyProcs(containerName string) error {
 		// 			to device names when restoring
 		os.Truncate(pathToFile, 0)
 
-		pid, _ := strconv.Atoi(string(contents))
-		process, _ := os.FindProcess(pid)
+		pid, err := strconv.Atoi(string(contents))
+
+		if err != nil {
+			continue
+		}
+
+		process, err := os.FindProcess(pid)
 
 		if err != nil {
 			continue
@@ -120,4 +125,38 @@ func killAllProxyProcs(containerName string) error {
 	}
 
 	return nil
+}
+
+func killProxyProc(containerName string, devName string) error {
+	proxyDevFileLock.Lock()
+	defer proxyDevFileLock.Unlock()
+
+	proxyDevFile := shared.VarPath("devices", containerName, devName)
+	contents, err := ioutil.ReadFile(proxyDevFile)
+
+	if err != nil {
+		return err
+	}
+
+	pid, _ := strconv.Atoi(string(contents))
+	if err != nil {
+		return err
+	}
+
+	process, _ := os.FindProcess(pid)
+	if err != nil {
+		return err
+	}
+
+	err = process.Kill()
+	if err != nil {
+		return err
+	}
+
+	err = os.Remove(proxyDevFile)
+	if err != nil {
+		return err
+	}	
+	
+	return err
 }
