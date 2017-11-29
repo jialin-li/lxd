@@ -4044,7 +4044,7 @@ func (c *containerLXC) Update(args db.ContainerArgs, userRequested bool) error {
 					return fmt.Errorf(msg)
 				}
 			} else if m["type"] == "proxy" {
-				err = c.insertProxyDevice(m)
+				err = c.insertProxyDevice(k, m)
 				if err != nil {
 					return err
 				}
@@ -5974,7 +5974,7 @@ func (c *containerLXC) removeUnixDevices() error {
 	return nil
 }
 
-func (c *containerLXC) insertProxyDevice(m types.Device) error {
+func (c *containerLXC) insertProxyDevice(name string, m types.Device) error {
 	if !c.IsRunning() {
 		return fmt.Errorf("Can't add proxy device to stopped container")
 	}
@@ -5998,8 +5998,7 @@ func (c *containerLXC) insertProxyDevice(m types.Device) error {
 		return fmt.Errorf("Error occurred when starting proxy device")
 	}
 
-	proxyDevName := m["name"]
-	err = createProxyDevInfoFile(c.name, proxyDevName, proxyPid)
+	err = createProxyDevInfoFile(c.name, name, proxyPid)
 	
 	return nil
 }
