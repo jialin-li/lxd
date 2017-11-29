@@ -50,13 +50,13 @@ func removeProxyDevInfoFile(containerName string, proxyDev string) error {
 }
 
 func setupProxyProcInfo(c container, device map[string]string) (*proxyProcInfo, error) {	
-	state, err := c.RenderState()
+	pid := c.InitPID()
 
-	if err != nil {
-		return nil, fmt.Errorf("Could not get pid of container")
+	if pid == -1 {
+		return nil, fmt.Errorf("Can't add proxy device to stopped container")
 	}
 
-	containerPid := strconv.Itoa(int(state.Pid))
+	containerPid := strconv.Itoa(int(pid))
 	lxdPid := strconv.Itoa(os.Getpid())
 
 	connectAddr := device["connect"]
