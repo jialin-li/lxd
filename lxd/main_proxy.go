@@ -24,8 +24,8 @@ func cmdProxyDevStart(args *Args) error {
 }
 
 func run(args *Args) error {
-	if (len(args.Params) != 6) {
-		return fmt.Errorf("Invalid arguments")
+	if (len(args.Params) != 5) {
+		return fmt.Errorf("Invalid number of arguments")
 	}
 
 	// Get all our arguments

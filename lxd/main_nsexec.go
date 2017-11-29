@@ -697,8 +697,6 @@ void proxydevstart(char *buf, char *cur, ssize_t size) {
 	char fdpath[80];
 	sprintf(fdpath, "/proc/self/fd/%d", fdnum);
 
-    
-
 	// Join the listener ns if not already setup
 	if (access(fdpath, F_OK) < 0) {
 		// Attach to the network namespace of the listener
