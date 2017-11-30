@@ -694,6 +694,9 @@ void proxydevstart(char *buf, char *cur, ssize_t size) {
 	ADVANCE_ARG_REQUIRED();
 	fdnum = atoi(cur);
 
+	// Cannot pass through -1 to runCommand since it is interpreted as a flag
+	fdnum = fdnum == 0 ? -1 : fdnum;
+	
 	char fdpath[80];
 	sprintf(fdpath, "/proc/self/fd/%d", fdnum);
 
