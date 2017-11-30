@@ -131,7 +131,6 @@ func killProxyProc(containerName string, devName string) error {
 
 	proxyDevFile := shared.VarPath("devices", containerName, devName)
 	contents, err := ioutil.ReadFile(proxyDevFile)
-
 	if err != nil {
 		return err
 	}
@@ -147,14 +146,8 @@ func killProxyProc(containerName string, devName string) error {
 	}
 
 	err = process.Kill()
-	if err != nil {
-		return err
-	}
 
-	err = os.Remove(proxyDevFile)
-	if err != nil {
-		return err
-	}	
+	err = os.Remove(proxyDevFile)	
 	
 	return err
 }

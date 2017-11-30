@@ -6076,6 +6076,7 @@ func (c *containerLXC) updateProxyDevice(name string, m types.Device) error {
 	if err != nil {
 		return fmt.Errorf("Error occurred when starting new proxy device")
 	}
+	fmt.Printf("proxyPid: %d", proxyPid)
 
 	err = createProxyDevInfoFile(c.name, name, proxyPid)
 	if err != nil {
