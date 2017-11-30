@@ -714,8 +714,6 @@ void proxydevstart(char *buf, char *cur, ssize_t size) {
 			_exit(1);
 		}
 	}
-
-	// We're done, jump back to Go
 }
 
 __attribute__((constructor)) void init(void) {

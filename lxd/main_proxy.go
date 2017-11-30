@@ -41,8 +41,7 @@ func run(args *Args) error {
 	
 	// Check where we are in initialization
 	if !shared.PathExists(fmt.Sprintf("/proc/self/fd/%d", fd)) {
-		fmt.Printf("Listening on %s in %s, forwarding to %s from %s\n", listenAddr, listenPid, connectAddr, connectPid)
-		fmt.Printf("Setting up the listener\n")
+		fmt.Fprintf(os.Stdout, "Listening on %s in %s, forwarding to %s from %s\n", listenAddr, listenPid, connectAddr, connectPid)
 
 		file, err := setUpFile(listenAddr)
 		if err != nil {
@@ -55,15 +54,20 @@ func run(args *Args) error {
 			return fmt.Errorf("failed to duplicate the listener fd: %v", err)
 		}
 
-		fmt.Printf("Re-executing ourselves\n")
+		newPid, _ := syscall.Dup(int(listenerFd))
 
-		args.Params[4] = strconv.Itoa(int(listenerFd))
-		err = syscall.Exec("/proc/self/exe", args.Params, []string{})
+		fmt.Fprintf(os.Stdout, "Re-executing ourselves\n")
+
+		args.Params[4] = strconv.Itoa(int(newPid))
+		execArgs := append([]string{"lxd" ,"proxydevstart"}, args.Params...)
+
+		err = syscall.Exec("/proc/self/exe", execArgs, []string{})
 		if err != nil {
 			return fmt.Errorf("failed to re-exec: %v", err)
 		}
 	}
 
+	
 	// Re-create listener from fd
 	listenFile := os.NewFile(uintptr(fd), "listener")
 	listener, err := net.FileListener(listenFile)
@@ -71,7 +75,7 @@ func run(args *Args) error {
 		return fmt.Errorf("failed to re-assemble listener: %v", err)
 	}
 
-	fmt.Printf("Starting to proxy\n")
+	fmt.Fprintf(os.Stdout, "Starting to proxy\n")
 
 	// begin proxying
 	for {

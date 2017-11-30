@@ -104,9 +104,7 @@ func killAllProxyProcs(containerName string) error {
 			continue
 		}
 
-		// NOTE:	don't remove file so we have easy access 
-		// 			to device names when restoring
-		os.Truncate(pathToFile, 0)
+		os.Remove(pathToFile)
 
 		pid, err := strconv.Atoi(string(contents))
 
