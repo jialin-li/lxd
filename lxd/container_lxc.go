@@ -2553,6 +2553,12 @@ func (c *containerLXC) OnStop(target string) error {
 			logger.Error("Unable to remove network filters", log.Ctx{"container": c.Name(), "err": err})
 		}
 
+		// Clean all proxy devices
+		err = c.removeProxyDevices()
+		if err != nil {
+			logger.Error("Unable to remove proxy", log.Ctx{"container": c.Name(), "err": err})
+		}
+
 		// Reboot the container
 		if target == "reboot" {
 			// Start the container again
@@ -2916,6 +2922,7 @@ func (c *containerLXC) cleanup() {
 	c.removeUnixDevices()
 	c.removeDiskDevices()
 	c.removeNetworkFilters()
+	c.removeProxyDevices()
 
 	// Remove the security profiles
 	AADeleteProfile(c)
@@ -6024,6 +6031,16 @@ func (c *containerLXC) removeProxyDevice(name string) error {
 	} 
 
 	err := killProxyProc(c.name, name)
+	if err != nil {
+		return err
+	}
+
+ 	return nil
+}
+
+func (c *containerLXC) removeProxyDevices() error {
+
+	err := killAllProxyProcs(c.name)
 	if err != nil {
 		return err
 	}
