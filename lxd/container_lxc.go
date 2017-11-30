@@ -4081,6 +4081,11 @@ func (c *containerLXC) Update(args db.ContainerArgs, userRequested bool) error {
 						return err
 					}
 				}
+			} else if m["type"] == "proxy" {
+				err = c.updateProxyDevice(k, m)
+				if err != nil {
+					return err
+				}
 			}
 		}
 
@@ -6004,6 +6009,11 @@ func (c *containerLXC) insertProxyDevice(name string, m types.Device) error {
 	}
 
 	err = createProxyDevInfoFile(c.name, name, proxyPid)
+	if err != nil {
+		process, _ := os.FindProcess(proxyPid)
+		process.Kill()
+		return fmt.Errorf("Error occurred when writing metadata for proxy process")
+	}
 	
 	return nil
 }
@@ -6014,13 +6024,50 @@ func (c *containerLXC) removeProxyDevice(name string) error {
 	} 
 
 	err := killProxyProc(c.name, name)
-
 	if err != nil {
 		return err
 	}
 
  	return nil
 }
+
+func (c *containerLXC) updateProxyDevice(name string, m types.Device) error {
+	if !c.IsRunning() {
+		return fmt.Errorf("Can't remove proxy device from stopped container")
+	}
+
+	proxyValues, err := setupProxyProcInfo(c, m)
+	if err != nil {
+		return err
+	}
+
+	proxyPid, _, err := shared.RunCommandGetPid(
+					c.state.OS.ExecPath,
+					"proxydevstart",
+					proxyValues.listenPid,
+					proxyValues.listenAddr,
+					proxyValues.connectPid,
+					proxyValues.connectAddr,
+					"-1")					
+	if err != nil {
+		return fmt.Errorf("Error occurred when starting new proxy device")
+	}
+
+	err = killProxyProc(c.name, name)
+	if err != nil {
+		return fmt.Errorf("Error occurred when removing old proxy device")
+	}
+
+	err = createProxyDevInfoFile(c.name, name, proxyPid)
+	if err != nil {
+		process, _ := os.FindProcess(proxyPid)
+		process.Kill()
+		return fmt.Errorf("Error occurred when writing metadata for proxy process")
+	}
+	
+ 	return nil
+}
+
 
 // Network device handling
 func (c *containerLXC) createNetworkDevice(name string, m types.Device) (string, error) {
