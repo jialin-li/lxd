@@ -6041,6 +6041,11 @@ func (c *containerLXC) updateProxyDevice(name string, m types.Device) error {
 		return err
 	}
 
+	err = killProxyProc(c.name, name)
+	if err != nil {
+		return fmt.Errorf("Error occurred when removing old proxy device")
+	}
+
 	proxyPid, _, err := shared.RunCommandGetPid(
 					c.state.OS.ExecPath,
 					"proxydevstart",
@@ -6051,11 +6056,6 @@ func (c *containerLXC) updateProxyDevice(name string, m types.Device) error {
 					"-1")					
 	if err != nil {
 		return fmt.Errorf("Error occurred when starting new proxy device")
-	}
-
-	err = killProxyProc(c.name, name)
-	if err != nil {
-		return fmt.Errorf("Error occurred when removing old proxy device")
 	}
 
 	err = createProxyDevInfoFile(c.name, name, proxyPid)
