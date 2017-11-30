@@ -843,20 +843,20 @@ func RunCommand(name string, arg ...string) (string, error) {
 	return string(output), nil
 }
 
-func RunCommandGetPid(name string, arg ...string) (int, string, error) {
+func RunCommandGetPid(name string, arg ...string) (int, error) {
 	cmd := exec.Command(name, arg...)
-	output, err := cmd.CombinedOutput()
+	err := cmd.Start()
 
 	if err != nil {
 		err := RunError{
-			msg: fmt.Sprintf("Failed to run: %s %s: %s", name, strings.Join(arg, " "), strings.TrimSpace(string(output))),
+			msg: fmt.Sprintf("Failed to run: %s %s: %s", name, strings.Join(arg, " ")),
 			Err: err,
 		}
-		return -1, string(output), err
+		return -1, err
 	}
 	
 	processPid := cmd.Process.Pid
-	return processPid, string(output), nil
+	return processPid, nil
 }
 
 func TryRunCommand(name string, arg ...string) (string, error) {

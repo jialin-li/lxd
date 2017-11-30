@@ -54,11 +54,11 @@ func run(args *Args) error {
 			return fmt.Errorf("failed to duplicate the listener fd: %v", err)
 		}
 
-		newPid, _ := syscall.Dup(int(listenerFd))
+		newFd, _ := syscall.Dup(int(listenerFd))
 
 		fmt.Fprintf(os.Stdout, "Re-executing ourselves\n")
 
-		args.Params[4] = strconv.Itoa(int(newPid))
+		args.Params[4] = strconv.Itoa(int(newFd))
 		execArgs := append([]string{"lxd" ,"proxydevstart"}, args.Params...)
 
 		err = syscall.Exec("/proc/self/exe", execArgs, []string{})

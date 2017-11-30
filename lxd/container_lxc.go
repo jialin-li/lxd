@@ -4056,6 +4056,7 @@ func (c *containerLXC) Update(args db.ContainerArgs, userRequested bool) error {
 					return fmt.Errorf(msg)
 				}
 			} else if m["type"] == "proxy" {
+				fmt.Printf("adding device: %v", m)
 				err = c.insertProxyDevice(k, m)
 				if err != nil {
 					return err
@@ -4089,6 +4090,7 @@ func (c *containerLXC) Update(args db.ContainerArgs, userRequested bool) error {
 					}
 				}
 			} else if m["type"] == "proxy" {
+				fmt.Printf("updating device: %v", m)
 				err = c.updateProxyDevice(k, m)
 				if err != nil {
 					return err
@@ -6002,7 +6004,7 @@ func (c *containerLXC) insertProxyDevice(name string, m types.Device) error {
 		return err
 	}
 
-	proxyPid, _, err := shared.RunCommandGetPid(
+	proxyPid, err := shared.RunCommandGetPid(
 					c.state.OS.ExecPath,
 					"proxydevstart",
 					proxyValues.listenPid,
@@ -6063,7 +6065,7 @@ func (c *containerLXC) updateProxyDevice(name string, m types.Device) error {
 		return fmt.Errorf("Error occurred when removing old proxy device")
 	}
 
-	proxyPid, _, err := shared.RunCommandGetPid(
+	proxyPid, err := shared.RunCommandGetPid(
 					c.state.OS.ExecPath,
 					"proxydevstart",
 					proxyValues.listenPid,
