@@ -33,9 +33,12 @@ func run(args *Args) error {
 	listenAddr := args.Params[1]
 	connectPid := args.Params[2]
 	connectAddr := args.Params[3]
-	fd, _ := strconv.Atoi(args.Params[4])
 
-
+	fd := -1
+	if args.Params[4] != "0" {
+		fd, _ = strconv.Atoi(args.Params[4])
+	}	
+	
 	// Check where we are in initialization
 	if !shared.PathExists(fmt.Sprintf("/proc/self/fd/%d", fd)) {
 		fmt.Printf("Listening on %s in %s, forwarding to %s from %s\n", listenAddr, listenPid, connectAddr, connectPid)

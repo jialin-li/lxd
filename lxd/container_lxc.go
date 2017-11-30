@@ -6002,7 +6002,7 @@ func (c *containerLXC) insertProxyDevice(name string, m types.Device) error {
 					proxyValues.listenAddr,
 					proxyValues.connectPid,
 					proxyValues.connectAddr,
-					"-1")					
+					"0")					
 			
 	if err != nil {
 		return fmt.Errorf("Error occurred when starting proxy device %s", err)
@@ -6053,7 +6053,7 @@ func (c *containerLXC) updateProxyDevice(name string, m types.Device) error {
 					proxyValues.listenAddr,
 					proxyValues.connectPid,
 					proxyValues.connectAddr,
-					"-1")					
+					"0")					
 	if err != nil {
 		return fmt.Errorf("Error occurred when starting new proxy device")
 	}
