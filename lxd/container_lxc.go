@@ -6000,7 +6000,7 @@ func (c *containerLXC) insertProxyDevice(name string, m types.Device) error {
 					"-1")					
 			
 	if err != nil {
-		return fmt.Errorf("Error occurred when starting proxy device")
+		return fmt.Errorf("Error occurred when starting proxy device %s", err)
 	}
 
 	err = createProxyDevInfoFile(c.name, name, proxyPid)

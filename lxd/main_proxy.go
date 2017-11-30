@@ -29,11 +29,11 @@ func run(args *Args) error {
 	}
 
 	// Get all our arguments
-	listenPid := args.Params[1]
-	listenAddr := args.Params[2]
-	connectPid := args.Params[3]
-	connectAddr := args.Params[4]
-	fd, _ := strconv.Atoi(args.Params[5])
+	listenPid := args.Params[0]
+	listenAddr := args.Params[1]
+	connectPid := args.Params[2]
+	connectAddr := args.Params[3]
+	fd, _ := strconv.Atoi(args.Params[4])
 
 
 	// Check where we are in initialization
@@ -54,7 +54,7 @@ func run(args *Args) error {
 
 		fmt.Printf("Re-executing ourselves\n")
 
-		args.Params[5] = strconv.Itoa(int(listenerFd))
+		args.Params[4] = strconv.Itoa(int(listenerFd))
 		err = syscall.Exec("/proc/self/exe", args.Params, []string{})
 		if err != nil {
 			return fmt.Errorf("failed to re-exec: %v", err)
