@@ -845,6 +845,8 @@ func RunCommand(name string, arg ...string) (string, error) {
 
 func RunCommandGetPid(name string, arg ...string) (int, error) {
 	cmd := exec.Command(name, arg...)
+	cmd.Stdout = os.Stdout
+    cmd.Stderr = os.Stderr
 	err := cmd.Start()
 
 	if err != nil {
