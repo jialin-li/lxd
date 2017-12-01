@@ -1844,6 +1844,7 @@ func (c *containerLXC) startCommon() (string, error) {
 	c.removeUnixDevices()
 	c.removeDiskDevices()
 	c.removeNetworkFilters()
+	c.removeProxyDevices()
 
 	var usbs []usbDevice
 	var gpus []gpuDevice
@@ -2033,6 +2034,11 @@ func (c *containerLXC) startCommon() (string, error) {
 					// Attempt to disable IPv6 on the host side interface
 					networkSysctl(fmt.Sprintf("ipv6/conf/%s/disable_ipv6", device), "1")
 				}
+			}
+		} else if m["type"] == "proxy" {
+			err = c.createProxyDevice(k, m)
+			if err != nil {
+				return "", err
 			}
 		}
 	}
@@ -2556,7 +2562,7 @@ func (c *containerLXC) OnStop(target string) error {
 		// Clean all proxy devices
 		err = c.removeProxyDevices()
 		if err != nil {
-			logger.Error("Unable to remove proxy", log.Ctx{"container": c.Name(), "err": err})
+			logger.Error("Unable to remove proxy devices", log.Ctx{"container": c.Name(), "err": err})
 		}
 
 		// Reboot the container
@@ -5998,8 +6004,15 @@ func (c *containerLXC) insertProxyDevice(name string, m types.Device) error {
 		return fmt.Errorf("Can't add proxy device to stopped container")
 	}
 
-	proxyValues, err := setupProxyProcInfo(c, m)
+	err := c.createProxyDevice(name, m)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
+func (c *containerLXC) createProxyDevice(name string, m types.Device) error {
+	proxyValues, err := setupProxyProcInfo(c, m)
 	if err != nil {
 		return err
 	}
@@ -6012,7 +6025,6 @@ func (c *containerLXC) insertProxyDevice(name string, m types.Device) error {
 					proxyValues.connectPid,
 					proxyValues.connectAddr,
 					"0")					
-			
 	if err != nil {
 		return fmt.Errorf("Error occurred when starting proxy device %s", err)
 	}
@@ -6052,7 +6064,7 @@ func (c *containerLXC) removeProxyDevices() error {
 
 func (c *containerLXC) updateProxyDevice(name string, m types.Device) error {
 	if !c.IsRunning() {
-		return fmt.Errorf("Can't remove proxy device from stopped container")
+		return fmt.Errorf("Can't update proxy device in stopped container")
 	}
 
 	proxyValues, err := setupProxyProcInfo(c, m)
@@ -6076,8 +6088,7 @@ func (c *containerLXC) updateProxyDevice(name string, m types.Device) error {
 	if err != nil {
 		return fmt.Errorf("Error occurred when starting new proxy device")
 	}
-	fmt.Printf("proxyPid: %d", proxyPid)
-
+	
 	err = createProxyDevInfoFile(c.name, name, proxyPid)
 	if err != nil {
 		process, _ := os.FindProcess(proxyPid)
