@@ -1678,6 +1678,34 @@ func btrfsSnapshot(source string, dest string, readonly bool) error {
 	}
 
 	return err
+	// return fmt.Errorf("source=%s, dest=%s, output=%s", source, dest, output)
+}
+
+func (s *storageBtrfs) CopyVolume(source string, dest string, readonly bool) error {
+	var srcMountPoint string
+	var dstMountPoint string
+
+	// parse out the source pool and volume
+	srcfields := strings.SplitN(source, "/", 2)
+	dstfields := strings.SplitN(dest, "/", 2)
+	if len(srcfields) != 2 || len(dstfields) != 2 {
+		return fmt.Errorf("Missing storage pool or volume parameter")
+	}
+
+	// copy within the same storage pool
+	if srcfields[0] == dstfields[0] {
+		srcMountPoint = getStoragePoolVolumeMountPoint(srcfields[0], srcfields[1])
+		dstMountPoint = getStoragePoolVolumeMountPoint(dstfields[0], dstfields[1])
+
+		_, err := s.StoragePoolMount()
+		if err != nil {
+			return err
+		}
+		return btrfsSnapshot(srcMountPoint, dstMountPoint, readonly)
+	}
+
+	// FIX ME: support copy across storage pool
+	return fmt.Errorf("Copy across storage pool is unsupported")
 }
 
 func (s *storageBtrfs) btrfsPoolVolumeSnapshot(source string, dest string, readonly bool) error {

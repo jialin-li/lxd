@@ -20,6 +20,10 @@ type storageCeph struct {
 	storageShared
 }
 
+func (s *storageCeph) CopyVolume(source string, dest string, readonly bool) error {
+	return nil
+}
+
 func (s *storageCeph) StorageCoreInit() error {
 	s.sType = storageTypeCeph
 	typeName, err := storageTypeToString(s.sType)

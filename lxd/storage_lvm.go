@@ -23,6 +23,10 @@ type storageLvm struct {
 	storageShared
 }
 
+func (s *storageLvm) CopyVolume(source string, dest string, readonly bool) error {
+	return nil
+}
+
 // Only initialize the minimal information we need about a given storage type.
 func (s *storageLvm) StorageCoreInit() error {
 	s.sType = storageTypeLvm

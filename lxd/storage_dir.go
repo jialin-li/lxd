@@ -19,6 +19,10 @@ type storageDir struct {
 	storageShared
 }
 
+func (s *storageDir) CopyVolume(source string, dest string, readonly bool) error {
+	return nil
+}
+
 // Only initialize the minimal information we need about a given storage type.
 func (s *storageDir) StorageCoreInit() error {
 	s.sType = storageTypeDir

@@ -30,6 +30,10 @@ type storageZfs struct {
 	storageShared
 }
 
+func (s *storageZfs) CopyVolume(source string, dest string, readonly bool) error {
+	return nil
+}
+
 func (s *storageZfs) getOnDiskPoolName() string {
 	if s.dataset != "" {
 		return s.dataset

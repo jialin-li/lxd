@@ -367,3 +367,33 @@ func storagePoolVolumeCreateInternal(state *state.State, poolName string, volume
 
 	return nil
 }
+
+// think about ways to combine this with storagePoolVolumeCreateInternal
+func storagePoolVolumeCopy(state *state.State, poolName string, volumeName, volumeDescription string, volumeTypeName string, volumeConfig map[string]string, source string) error {
+	err := storagePoolVolumeDBCreate(state, poolName, volumeName, volumeDescription, volumeTypeName, volumeConfig)
+	if err != nil {
+		return err
+	}
+
+	// Convert the volume type name to our internal integer representation.
+	volumeType, err := storagePoolVolumeTypeNameToType(volumeTypeName)
+	if err != nil {
+		return err
+	}
+
+	s, err := storagePoolVolumeInit(state, poolName, volumeName, volumeType)
+	if err != nil {
+		return err
+	}
+
+	poolID, _, _ := s.GetContainerPoolInfo()
+
+	// Create storage volume.
+	err = s.CopyVolume(source, filepath.Join(poolName, volumeName), false)
+	if err != nil {
+		state.DB.StoragePoolVolumeDelete(volumeName, volumeType, poolID)
+		return err
+	}
+
+	return nil
+}
