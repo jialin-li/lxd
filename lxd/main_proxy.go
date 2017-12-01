@@ -88,7 +88,7 @@ func run(args *Args) error {
 
 		// Connect to the target
 		fields := strings.SplitN(connectAddr, ":", 2)
-		dstConn, err := net.Dial("tcp", fields[1])
+		dstConn, err := net.Dial("tcp", strings.Join(fields[1:], ""))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: Failed to connect to target: %v\n", err)
 			srcConn.Close()
@@ -104,11 +104,12 @@ func run(args *Args) error {
 
 func setUpFile (listenAddr string) (os.File, error) {
 	fields := strings.SplitN(listenAddr, ":", 2)
+	ipPortPair := strings.Join(fields[1:], "")
 
 	if (fields[0] == "unix") {
-		return unixFile(fields[1])
+		return unixFile(ipPortPair)
 	} else if (fields[0] == "tcp") {
-		return tcpFile(fields[1])
+		return tcpFile(ipPortPair)
 	}
 	return os.File{}, fmt.Errorf("cannot resolve file from network type: %v", fields[0])
 }
