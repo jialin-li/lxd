@@ -76,6 +76,8 @@ func setupProxyProcInfo(c container, device map[string]string) (*proxyProcInfo, 
 
 func killAllProxyProcs(containerName string) error {	
 	proxyDevicesPath := shared.VarPath("devices", containerName)
+	err := os.Chmod(proxyDevicesPath, 0400)
+
 	files, err := ioutil.ReadDir(proxyDevicesPath)	
 
 	if err != nil {

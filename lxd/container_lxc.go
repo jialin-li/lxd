@@ -4059,7 +4059,6 @@ func (c *containerLXC) Update(args db.ContainerArgs, userRequested bool) error {
 					return fmt.Errorf(msg)
 				}
 			} else if m["type"] == "proxy" {
-				fmt.Printf("adding device: %v\n", m)
 				err = c.insertProxyDevice(k, m)
 				if err != nil {
 					return err
@@ -4093,7 +4092,6 @@ func (c *containerLXC) Update(args db.ContainerArgs, userRequested bool) error {
 					}
 				}
 			} else if m["type"] == "proxy" {
-				fmt.Printf("updating device: %v\n", m)
 				err = c.updateProxyDevice(k, m)
 				if err != nil {
 					return err
@@ -5997,6 +5995,7 @@ func (c *containerLXC) removeUnixDevices() error {
 }
 
 func (c *containerLXC) insertProxyDevice(name string, m types.Device) error {
+	fmt.Printf("Adding proxy device %s to container %s\n", name, c.name)
 	if !c.IsRunning() {
 		return fmt.Errorf("Can't add proxy device to stopped container")
 	}
@@ -6030,6 +6029,7 @@ func (c *containerLXC) insertProxyDevice(name string, m types.Device) error {
 }
 
 func (c *containerLXC) removeProxyDevice(name string) error {
+	fmt.Printf("Removing single proxy device %s from container %s\n", name, c.name)
 	if !c.IsRunning() {
 		return fmt.Errorf("Can't remove proxy device from stopped container")
 	} 
@@ -6043,7 +6043,7 @@ func (c *containerLXC) removeProxyDevice(name string) error {
 }
 
 func (c *containerLXC) removeProxyDevices() error {
-
+	fmt.Printf("Removing all proxy devices from container %s\n", c.name)
 	err := killAllProxyProcs(c.name)
 	if err != nil {
 		return err
@@ -6053,6 +6053,7 @@ func (c *containerLXC) removeProxyDevices() error {
 }
 
 func (c *containerLXC) updateProxyDevice(name string, m types.Device) error {
+	fmt.Printf("Updating proxy device %s from container %s\n", name, c.name)
 	if !c.IsRunning() {
 		return fmt.Errorf("Can't update proxy device in stopped container")
 	}
@@ -6090,18 +6091,18 @@ func (c *containerLXC) updateProxyDevice(name string, m types.Device) error {
  	return nil
 }
 
-func (c *containerLXC) restartProxyDevices() error {
+func (c *containerLXC) restartProxyDevices() {
+	fmt.Printf("--------Restarting all proxy devices for container %s--------\n", c.name)
 	for _, name := range c.expandedDevices.DeviceNames() {
 		m := c.expandedDevices[name]
 		if m["type"] == "proxy" {
-			fmt.Printf("adding device: %v\n", m)
+			fmt.Printf("Adding device: %s\n", name)
 			err := c.insertProxyDevice(name, m)
 			if err != nil {
-				return err
+				fmt.Printf("Error when starting proxy device '%s' for container %s: %s\n", name, c.name, err)
 			}
 		}
 	}
-	return nil
 }
 
 
