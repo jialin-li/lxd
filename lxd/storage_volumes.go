@@ -173,18 +173,9 @@ func storagePoolVolumesTypePost(d *Daemon, r *http.Request) Response {
 			`storage volumes of type %s`, req.Type))
 	}
 
-	// Perform a copy if the source is not empty, do this before initialize a new API endpoint
-	if req.Source != "" {
-		// NOTE: need to set config to the src volume config and Type
-		err = storagePoolVolumeCopy(d.State(), poolName, req.Name, req.Description, req.Type, req.Config, req.Source)
-		if err != nil {
-			return SmartError(fmt.Errorf("volume copy failed %v", err))
-		}
-	} else {
-		err = storagePoolVolumeCreateInternal(d.State(), poolName, req.Name, req.Description, req.Type, req.Config)
-		if err != nil {
-			return InternalError(fmt.Errorf("create internal failed %v", err))
-		}
+	err = storagePoolVolumeCreateInternal(d.State(), poolName, req.Name, req.Description, req.Type, req.Config, req.Source)
+	if err != nil {
+		return InternalError(fmt.Errorf("create internal failed %v", err))
 	}
 
 	apiEndpoint, err := storagePoolVolumeTypeNameToAPIEndpoint(req.Type)

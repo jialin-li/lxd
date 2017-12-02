@@ -339,8 +339,22 @@ func storagePoolVolumeDBCreate(s *state.State, poolName string, volumeName, volu
 	return nil
 }
 
-func storagePoolVolumeCreateInternal(state *state.State, poolName string, volumeName, volumeDescription string, volumeTypeName string, volumeConfig map[string]string) error {
-	err := storagePoolVolumeDBCreate(state, poolName, volumeName, volumeDescription, volumeTypeName, volumeConfig)
+func storagePoolVolumeCreateInternal(state *state.State, poolName string, volumeName, volumeDescription string, volumeTypeName string, volumeConfig map[string]string, source string) error {
+	var err error
+	// if it's a copy then override volume Description, TypeName and Config
+	if source != "" {
+		// parse out the source pool and volume
+		srcfields := strings.SplitN(source, "/", 2)
+		if len(srcfields) != 2 {
+			return fmt.Errorf("Missing storage pool or volume parameter")
+		}
+		volumeConfig, volumeDescription, err = storagePoolVolumeDBGet(state, srcfields[0], srcfields[1], volumeTypeName)
+		if err != nil {
+			return fmt.Errorf("Fail to retrieve the source config and description")
+		}
+	}
+
+	err = storagePoolVolumeDBCreate(state, poolName, volumeName, volumeDescription, volumeTypeName, volumeConfig)
 	if err != nil {
 		return err
 	}
@@ -358,42 +372,59 @@ func storagePoolVolumeCreateInternal(state *state.State, poolName string, volume
 
 	poolID, _, _ := s.GetContainerPoolInfo()
 
-	// Create storage volume.
-	err = s.StoragePoolVolumeCreate()
-	if err != nil {
-		state.DB.StoragePoolVolumeDelete(volumeName, volumeType, poolID)
-		return err
+	if source == "" {
+		// Create storage volume.
+		err = s.StoragePoolVolumeCreate()
+		if err != nil {
+			state.DB.StoragePoolVolumeDelete(volumeName, volumeType, poolID)
+			return err
+		}
+	} else {
+		// Copy the src subvolume
+		err = s.CopyVolume(source, filepath.Join(poolName, volumeName), false)
+		if err != nil {
+			state.DB.StoragePoolVolumeDelete(volumeName, volumeType, poolID)
+			return err
+		}
 	}
 
 	return nil
 }
 
-// think about ways to combine this with storagePoolVolumeCreateInternal
-func storagePoolVolumeCopy(state *state.State, poolName string, volumeName, volumeDescription string, volumeTypeName string, volumeConfig map[string]string, source string) error {
-	err := storagePoolVolumeDBCreate(state, poolName, volumeName, volumeDescription, volumeTypeName, volumeConfig)
+// get a volume from DB
+func storagePoolVolumeDBGet(s *state.State, poolName string, volumeName string, volumeTypeName string) (map[string]string, string, error) {
+	err := storageValidName(volumeName)
 	if err != nil {
-		return err
+		return nil, "", err
 	}
 
 	// Convert the volume type name to our internal integer representation.
 	volumeType, err := storagePoolVolumeTypeNameToType(volumeTypeName)
 	if err != nil {
-		return err
+		return nil, "", err
 	}
 
-	s, err := storagePoolVolumeInit(state, poolName, volumeName, volumeType)
+	// Load storage pool the volume will be attached to.
+	poolID, _, err := s.DB.StoragePoolGet(poolName)
 	if err != nil {
-		return err
+		return nil, "", err
 	}
 
-	poolID, _, _ := s.GetContainerPoolInfo()
-
-	// Create storage volume.
-	err = s.CopyVolume(source, filepath.Join(poolName, volumeName), false)
+	// Get the specified volume
+	volumeID, err := s.DB.StoragePoolVolumeGetTypeID(volumeName, volumeType, poolID)
 	if err != nil {
-		state.DB.StoragePoolVolumeDelete(volumeName, volumeType, poolID)
-		return err
+		return nil, "", fmt.Errorf("failed to get volume %s", volumeName)
 	}
 
-	return nil
+	volConfig, err := s.DB.StorageVolumeConfigGet(volumeID)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to get the config of volume %s", volumeName)
+	}
+
+	volDescription, err := s.DB.StorageVolumeDescriptionGet(volumeID)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to get the description of volume %s", volumeName)
+	}
+
+	return volConfig, volDescription, nil
 }
