@@ -75,6 +75,8 @@ func run(args *Args) error {
 		return fmt.Errorf("failed to re-assemble listener: %v", err)
 	}
 
+	defer listener.Close()
+
 	fmt.Fprintf(os.Stdout, "Starting to proxy\n")
 
 	// begin proxying
@@ -102,7 +104,7 @@ func run(args *Args) error {
 	return nil
 }
 
-func setUpFile (listenAddr string) (os.File, error) {
+func setUpFile(listenAddr string) (os.File, error) {
 	fields := strings.SplitN(listenAddr, ":", 2)
 	ipPortPair := strings.Join(fields[1:], "")
 

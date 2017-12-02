@@ -20,9 +20,6 @@ type proxyProcInfo struct {
 }
 
 func createProxyDevInfoFile(containerName string, proxyDev string, proxyPid int) error {
-	proxyDevFileLock.Lock()
-	defer proxyDevFileLock.Unlock()
-
 	filePath := shared.VarPath("devices", containerName, proxyDev)
 	f, err := os.Create(filePath)
 
@@ -40,9 +37,6 @@ func createProxyDevInfoFile(containerName string, proxyDev string, proxyPid int)
 
 // for use when the user wants to delete a proxy device
 func removeProxyDevInfoFile(containerName string, proxyDev string) error {
-	proxyDevFileLock.Lock()
-	defer proxyDevFileLock.Unlock()
-
 	proxyDevFilePath := shared.VarPath("devices", containerName, proxyDev)
 	err := os.Remove(proxyDevFilePath)		
 
@@ -80,9 +74,8 @@ func setupProxyProcInfo(c container, device map[string]string) (*proxyProcInfo, 
 	return p, nil
 }
 
-func killAllProxyProcs(containerName string) error {
+func killAllProxyProcs(containerName string) error {	
 	proxyDevicesPath := shared.VarPath("devices", containerName)
-
 	files, err := ioutil.ReadDir(proxyDevicesPath)	
 
 	if err != nil {
@@ -91,39 +84,13 @@ func killAllProxyProcs(containerName string) error {
 
 	for _, proxyInfo := range files {
 		devname := proxyInfo.Name()
-
-		pathToFile := fmt.Sprintf("%s/%s", proxyDevicesPath, devname)
-		contents, err := ioutil.ReadFile(pathToFile)
-
-		if err != nil {
-			continue
-		}
-
-		os.Remove(pathToFile)
-
-		pid, err := strconv.Atoi(string(contents))
-
-		if err != nil {
-			continue
-		}
-
-		process, err := os.FindProcess(pid)
-
-		if err != nil {
-			continue
-		}
-
-		process.Kill()
-
+		killProxyProc(containerName, devname)
 	}
 
 	return nil
 }
 
 func killProxyProc(containerName string, devName string) error {
-	proxyDevFileLock.Lock()
-	defer proxyDevFileLock.Unlock()
-
 	proxyDevFile := shared.VarPath("devices", containerName, devName)
 	contents, err := ioutil.ReadFile(proxyDevFile)
 	if err != nil {

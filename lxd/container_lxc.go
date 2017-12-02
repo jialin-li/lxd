@@ -2035,11 +2035,6 @@ func (c *containerLXC) startCommon() (string, error) {
 					networkSysctl(fmt.Sprintf("ipv6/conf/%s/disable_ipv6", device), "1")
 				}
 			}
-		} else if m["type"] == "proxy" {
-			err = c.createProxyDevice(k, m)
-			if err != nil {
-				return "", err
-			}
 		}
 	}
 
@@ -2240,8 +2235,24 @@ func (c *containerLXC) Start(stateful bool) error {
 		return err
 	}
 
+	c.restartProxyDevices()
+
 	logger.Info("Started container", ctxMap)
 
+	return nil
+}
+
+func (c *containerLXC) restartProxyDevices() error {
+	for _, name := range c.expandedDevices.DeviceNames() {
+		m := c.expandedDevices[name]
+		if m["type"] == "proxy" {
+			fmt.Printf("adding device: %v", m)
+			err := c.insertProxyDevice(name, m)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
@@ -6017,6 +6028,7 @@ func (c *containerLXC) createProxyDevice(name string, m types.Device) error {
 		return err
 	}
 
+	fmt.Printf("the prooxy dev info is %v", proxyValues)
 	proxyPid, err := shared.RunCommandGetPid(
 					c.state.OS.ExecPath,
 					"proxydevstart",
@@ -6067,6 +6079,7 @@ func (c *containerLXC) updateProxyDevice(name string, m types.Device) error {
 		return fmt.Errorf("Can't update proxy device in stopped container")
 	}
 
+	fmt.Printf("updating the proxy device")
 	proxyValues, err := setupProxyProcInfo(c, m)
 	if err != nil {
 		return err
