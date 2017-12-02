@@ -4059,7 +4059,7 @@ func (c *containerLXC) Update(args db.ContainerArgs, userRequested bool) error {
 					return fmt.Errorf(msg)
 				}
 			} else if m["type"] == "proxy" {
-				fmt.Printf("adding device: %v", m)
+				fmt.Printf("adding device: %v\n", m)
 				err = c.insertProxyDevice(k, m)
 				if err != nil {
 					return err
@@ -4093,7 +4093,7 @@ func (c *containerLXC) Update(args db.ContainerArgs, userRequested bool) error {
 					}
 				}
 			} else if m["type"] == "proxy" {
-				fmt.Printf("updating device: %v", m)
+				fmt.Printf("updating device: %v\n", m)
 				err = c.updateProxyDevice(k, m)
 				if err != nil {
 					return err
@@ -6006,7 +6006,7 @@ func (c *containerLXC) insertProxyDevice(name string, m types.Device) error {
 		return err
 	}
 
-	fmt.Printf("the proxy dev info is %v", *proxyValues)
+	fmt.Printf("the proxy dev info is %v\n", *proxyValues)
 	proxyPid, err := shared.RunCommandGetPid(
 					c.state.OS.ExecPath,
 					"proxydevstart",
@@ -6094,7 +6094,7 @@ func (c *containerLXC) restartProxyDevices() error {
 	for _, name := range c.expandedDevices.DeviceNames() {
 		m := c.expandedDevices[name]
 		if m["type"] == "proxy" {
-			fmt.Printf("adding device: %v", m)
+			fmt.Printf("adding device: %v\n", m)
 			err := c.insertProxyDevice(name, m)
 			if err != nil {
 				return err
