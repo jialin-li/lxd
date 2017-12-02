@@ -19,7 +19,7 @@ type storageDir struct {
 	storageShared
 }
 
-func (s *storageDir) CopyVolume(source string, dest string, readonly bool) error {
+func (s *storageDir) CopyVolume(srcPool string, srcVol string, dstPool string, dstVolume string, readonly bool) error {
 	return nil
 }
 

@@ -14,7 +14,7 @@ type storageMock struct {
 	storageShared
 }
 
-func (s *storageMock) CopyVolume(source string, dest string, readonly bool) error {
+func (s *storageMock) CopyVolume(srcPool string, srcVol string, dstPool string, dstVolume string, readonly bool) error {
 	return nil
 }
 

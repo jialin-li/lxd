@@ -23,7 +23,7 @@ type storageLvm struct {
 	storageShared
 }
 
-func (s *storageLvm) CopyVolume(source string, dest string, readonly bool) error {
+func (s *storageLvm) CopyVolume(srcPool string, srcVol string, dstPool string, dstVolume string, readonly bool) error {
 	return nil
 }
 

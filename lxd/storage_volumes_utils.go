@@ -380,8 +380,14 @@ func storagePoolVolumeCreateInternal(state *state.State, poolName string, volume
 			return err
 		}
 	} else {
+		// parse out the source pool and volume
+		srcfields := strings.SplitN(source, "/", 2)
+		if len(srcfields) != 2 {
+			return fmt.Errorf("Missing storage pool or volume parameter for the src volume")
+		}
+
 		// Copy the src subvolume
-		err = s.CopyVolume(source, filepath.Join(poolName, volumeName), false)
+		err = s.CopyVolume(srcfields[0], srcfields[1], poolName, volumeName, false)
 		if err != nil {
 			state.DB.StoragePoolVolumeDelete(volumeName, volumeType, poolID)
 			return err

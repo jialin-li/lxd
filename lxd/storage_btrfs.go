@@ -1681,21 +1681,14 @@ func btrfsSnapshot(source string, dest string, readonly bool) error {
 	// return fmt.Errorf("source=%s, dest=%s, output=%s", source, dest, output)
 }
 
-func (s *storageBtrfs) CopyVolume(source string, dest string, readonly bool) error {
+func (s *storageBtrfs) CopyVolume(srcPool string, srcVol string, dstPool string, dstVol string, readonly bool) error {
 	var srcMountPoint string
 	var dstMountPoint string
 
-	// parse out the source pool and volume
-	srcfields := strings.SplitN(source, "/", 2)
-	dstfields := strings.SplitN(dest, "/", 2)
-	if len(srcfields) != 2 || len(dstfields) != 2 {
-		return fmt.Errorf("Missing storage pool or volume parameter")
-	}
-
 	// copy within the same storage pool
-	if srcfields[0] == dstfields[0] {
-		srcMountPoint = getStoragePoolVolumeMountPoint(srcfields[0], srcfields[1])
-		dstMountPoint = getStoragePoolVolumeMountPoint(dstfields[0], dstfields[1])
+	if srcPool == dstPool {
+		srcMountPoint = getStoragePoolVolumeMountPoint(srcPool, srcVol)
+		dstMountPoint = getStoragePoolVolumeMountPoint(dstPool, dstVol)
 
 		_, err := s.StoragePoolMount()
 		if err != nil {

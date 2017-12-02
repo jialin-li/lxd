@@ -30,7 +30,7 @@ type storageZfs struct {
 	storageShared
 }
 
-func (s *storageZfs) CopyVolume(source string, dest string, readonly bool) error {
+func (s *storageZfs) CopyVolume(srcPool string, srcVol string, dstPool string, dstVolume string, readonly bool) error {
 	return nil
 }
 
