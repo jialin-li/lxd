@@ -2242,20 +2242,6 @@ func (c *containerLXC) Start(stateful bool) error {
 	return nil
 }
 
-func (c *containerLXC) restartProxyDevices() error {
-	for _, name := range c.expandedDevices.DeviceNames() {
-		m := c.expandedDevices[name]
-		if m["type"] == "proxy" {
-			fmt.Printf("adding device: %v", m)
-			err := c.insertProxyDevice(name, m)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 func (c *containerLXC) OnStart() error {
 	// Make sure we can't call go-lxc functions by mistake
 	c.fromHook = true
@@ -6015,20 +6001,12 @@ func (c *containerLXC) insertProxyDevice(name string, m types.Device) error {
 		return fmt.Errorf("Can't add proxy device to stopped container")
 	}
 
-	err := c.createProxyDevice(name, m)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *containerLXC) createProxyDevice(name string, m types.Device) error {
 	proxyValues, err := setupProxyProcInfo(c, m)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("the prooxy dev info is %v", proxyValues)
+	fmt.Printf("the proxy dev info is %v", *proxyValues)
 	proxyPid, err := shared.RunCommandGetPid(
 					c.state.OS.ExecPath,
 					"proxydevstart",
@@ -6038,14 +6016,14 @@ func (c *containerLXC) createProxyDevice(name string, m types.Device) error {
 					proxyValues.connectAddr,
 					"0")					
 	if err != nil {
-		return fmt.Errorf("Error occurred when starting proxy device %s", err)
+		return fmt.Errorf("Error occurred when starting proxy device: %s", err)
 	}
 
 	err = createProxyDevInfoFile(c.name, name, proxyPid)
 	if err != nil {
 		process, _ := os.FindProcess(proxyPid)
 		process.Kill()
-		return fmt.Errorf("Error occurred when writing metadata for proxy process")
+		return fmt.Errorf("Error occurred when writing metadata for proxy process: %s", err)
 	}
 	
 	return nil
@@ -6110,6 +6088,20 @@ func (c *containerLXC) updateProxyDevice(name string, m types.Device) error {
 	}
 	
  	return nil
+}
+
+func (c *containerLXC) restartProxyDevices() error {
+	for _, name := range c.expandedDevices.DeviceNames() {
+		m := c.expandedDevices[name]
+		if m["type"] == "proxy" {
+			fmt.Printf("adding device: %v", m)
+			err := c.insertProxyDevice(name, m)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 

@@ -87,6 +87,8 @@ func killAllProxyProcs(containerName string) error {
 		killProxyProc(containerName, devname)
 	}
 
+	os.Remove(proxyDevicesPath)
+
 	return nil
 }
 
