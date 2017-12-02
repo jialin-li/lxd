@@ -96,6 +96,8 @@ func killAllProxyProcs(containerName string) error {
 
 func killProxyProc(containerName string, devName string) error {
 	proxyDevFile := shared.VarPath("devices", containerName, devName)
+	err := os.Chmod(proxyDevFile, 0400)
+
 	contents, err := ioutil.ReadFile(proxyDevFile)
 	if err != nil {
 		return err
