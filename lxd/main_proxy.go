@@ -87,21 +87,36 @@ func run(args *Args) error {
 			fmt.Fprintf(os.Stderr, "error: Failed to accept new connection: %v\n", err)
 			continue
 		}
-
+		fmt.Printf("Accepted a new connection\n")
+		// b, err := ioutil.ReadAll(srcConn)
+		// fmt.Printf("%s %d", b, len(b))
 		// Connect to the target
-		fields := strings.SplitN(connectAddr, ":", 2)
-		dstConn, err := net.Dial("tcp", strings.Join(fields[1:], ""))
+		dstConn, err := getDestConn(connectAddr)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: Failed to connect to target: %v\n", err)
 			srcConn.Close()
 			continue
 		}
+		fmt.Printf("Created dest connection and about to copy\n")
 
 		go io.Copy(srcConn, dstConn)
 		go io.Copy(dstConn, srcConn)
 	}
 
 	return nil
+}
+
+func getDestConn(connectAddr string) (net.Conn, error) {
+	fields := strings.SplitN(connectAddr, ":", 2)
+	if fields[0] == "tcp" {
+		dstConn, err := net.Dial("tcp", strings.Join(fields[1:], ""))
+		return dstConn, err
+	} else if fields[0] == "unix" {
+		dstConn, err := net.Dial("unix", strings.Join(fields[1:], ""))
+		return dstConn, err
+	} else {
+		return nil, fmt.Errorf("Invalid connect addr type\n")
+	}
 }
 
 func setUpFile(listenAddr string) (os.File, error) {
