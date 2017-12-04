@@ -31,7 +31,33 @@ type storageZfs struct {
 }
 
 func (s *storageZfs) CopyVolume(srcPool string, srcVol string, dstPool string, dstVolume string, readonly bool) error {
-	return nil
+	var dstMountPoint string
+
+	// copy within the same storage pool
+	if srcPool == dstPool {
+		dstMountPoint = getStoragePoolVolumeMountPoint(dstPool, dstVolume)
+
+		_, err := s.StoragePoolMount()
+		if err != nil {
+			return err
+		}
+
+		// Create snapshot for zfs to clone from
+		poolName := s.getOnDiskPoolName()
+		snapUUID := fmt.Sprintf("copy-%s", uuid.NewRandom().String())
+		err = zfsPoolVolumeSnapshotCreate(poolName, "custom", snapUUID)
+		if err != nil {
+			return err
+		}
+
+		// Clone
+		srcDataset := fmt.Sprintf("custom/%s", srcVol)
+		dstDataset := fmt.Sprintf("custom/%s", dstVolume)
+		return zfsPoolVolumeClone(poolName, srcDataset, snapUUID, dstDataset, dstMountPoint)
+	}
+
+	// FIX ME: support copy across storage pool
+	return fmt.Errorf("Copy across storage pool is unsupported")
 }
 
 func (s *storageZfs) getOnDiskPoolName() string {
