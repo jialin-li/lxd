@@ -19,8 +19,27 @@ type storageDir struct {
 	storageShared
 }
 
-func (s *storageDir) CopyVolume(srcPool string, srcVol string, dstPool string, dstVolume string, readonly bool) error {
-	return nil
+func (s *storageDir) CopyVolume(srcPool string, srcVol string, dstPool string, dstVol string, readonly bool) error {
+	if srcPool == dstPool {
+		srcMountPoint := getStoragePoolVolumeMountPoint(srcPool, srcVol)
+		dstMountPoint := getStoragePoolVolumeMountPoint(dstPool, dstVol)
+		
+		err := os.MkdirAll(dstMountPoint, 0711)
+		if err != nil {
+			return err
+		}
+
+		bwlimit := s.pool.Config["rsync.bwlimit"]
+		_, err = rsyncLocalCopy(srcMountPoint, dstMountPoint, bwlimit)
+		
+		if err != nil {
+			os.Remove(dstMountPoint)
+			return err
+		}
+		return nil
+	}
+
+	return fmt.Errorf("Copy across storage pools is currently unsupported")
 }
 
 // Only initialize the minimal information we need about a given storage type.
