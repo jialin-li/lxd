@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
-
+	"syscall"
 	"github.com/lxc/lxd/shared"	
 )
 
@@ -74,12 +74,13 @@ func killProxyProc(devPath string) error {
 		return err
 	}
 
-	process, _ := os.FindProcess(pid)
+	// _, _ := os.FindProcess(pid)
 	if err != nil {
 		return err
 	}
 
-	process.Kill()
+	fmt.Printf("Sending the kill signal to %d!!!\n\n", pid)
+	syscall.Kill(pid, syscall.SIGKILL)
 	os.Remove(devPath)	
 	
 	return nil

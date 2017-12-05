@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"	
+	"os"
+	"os/signal"	
 	"strings"
 	"syscall"
 	"strconv"
@@ -47,7 +48,16 @@ func run(args *Args) error {
 		if err != nil {
 			return err
 		}
-		defer file.Close()
+
+		defer func() {
+			file.Close()
+			err = cleanupUnixSocket(listenAddr)
+			if err != nil {
+				fmt.Fprintf(os.Stdout, "Error unlinking unix socket: %v", err)
+			}
+		}()
+
+		handleSignal(listenAddr)
 
 		listenerFd := file.Fd()
 		if err != nil {
@@ -75,7 +85,15 @@ func run(args *Args) error {
 		return fmt.Errorf("failed to re-assemble listener: %v", err)
 	}
 
-	defer listener.Close()
+	defer func() {
+		listener.Close()
+		err = cleanupUnixSocket(listenAddr)
+		if err != nil {
+			fmt.Fprintf(os.Stdout, "Error unlinking unix socket: %v", err)
+		}
+	}()
+
+	handleSignal(listenAddr)
 
 	fmt.Fprintf(os.Stdout, "Starting to proxy\n")
 
@@ -136,5 +154,33 @@ func getDestConn(connectAddr string) (net.Conn, error) {
 	fields := strings.SplitN(connectAddr, ":", 2)
 	addr := strings.Join(fields[1:], "")
 	return net.Dial(fields[0], addr)
+}
+
+func cleanupUnixSocket(listenAddr string) error {
+	fields := strings.SplitN(listenAddr, ":", 2)
+	addr := strings.Join(fields[1:], "")
+	if fields[0] == "unix" {
+		err := syscall.Unlink(addr)
+		return err
+	}
+	return nil
+}
+
+func handleSignal(listenAddr string) {
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGINT)
+	go func() {
+		// Wait for a SIGINT or SIGKILL:
+		sig := <-sigc
+		fmt.Printf("I AM DONE WAITING")
+		fmt.Fprintf(os.Stdout, "Caught signal %s: cleaning up...", sig)
+		os.Create("signaltest")
+		err := cleanupUnixSocket(listenAddr)
+		if err != nil {
+			fmt.Fprintf(os.Stdout, "Error unlinking unix socket: %v", err)
+		}
+		// And we're done:
+		os.Exit(0)
+	}()
 }
 
