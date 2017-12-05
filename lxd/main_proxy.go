@@ -43,7 +43,7 @@ func run(args *Args) error {
 	if !shared.PathExists(fmt.Sprintf("/proc/self/fd/%d", fd)) {
 		fmt.Fprintf(os.Stdout, "Listening on %s in %s, forwarding to %s from %s\n", listenAddr, listenPid, connectAddr, connectPid)
 
-		file, err := setUpFile(listenAddr)
+		file, err := getListenerFile(listenAddr)
 		if err != nil {
 			return err
 		}
@@ -89,8 +89,7 @@ func run(args *Args) error {
 		}
 
 		// Connect to the target
-		fields := strings.SplitN(connectAddr, ":", 2)
-		dstConn, err := net.Dial("tcp", strings.Join(fields[1:], ""))
+		dstConn, err := getDestConn(connectAddr)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: Failed to connect to target: %v\n", err)
 			srcConn.Close()
@@ -104,53 +103,35 @@ func run(args *Args) error {
 	return nil
 }
 
-func setUpFile(listenAddr string) (os.File, error) {
+func getListenerFile(listenAddr string) (os.File, error) {
 	fields := strings.SplitN(listenAddr, ":", 2)
-	ipPortPair := strings.Join(fields[1:], "")
+	addr := strings.Join(fields[1:], "")
 
-	if (fields[0] == "unix") {
-		return unixFile(ipPortPair)
-	} else if (fields[0] == "tcp") {
-		return tcpFile(ipPortPair)
+	listener, err := net.Listen(fields[0], addr)
+	if err != nil {
+		return os.File{}, err
 	}
-	return os.File{}, fmt.Errorf("cannot resolve file from network type: %v", fields[0])
+
+	file := &os.File{}
+	switch listener.(type) {
+	case *net.TCPListener:
+		tcpListener := listener.(*net.TCPListener)
+		file, err = tcpListener.File()
+	case *net.UnixListener:
+		unixListener := listener.(*net.UnixListener)
+		file, err = unixListener.File()
+	}
+
+	if err != nil {
+		return os.File{}, fmt.Errorf("Failed to get file from listener: %v\n", err)
+	}
+
+	return *file, nil
 }
 
-func unixFile(path string) (os.File, error) {
-	addr, err := net.ResolveUnixAddr("unix", path)
-	if err != nil {
-		return os.File{}, fmt.Errorf("cannot resolve socket address: %v", err)
-	}
-
-	listener, err := net.ListenUnix("unix", addr)
-	if err != nil {
-		return os.File{}, fmt.Errorf("cannot bind socket: %v", err)
-	}
-
-	file, err := listener.File()
-	if err != nil {
-		return os.File{}, fmt.Errorf("failed to extra fd from listener: %v", err)
-	}
-
-	return *file, err
-}
-
-func tcpFile (path string) (os.File, error) {
-	addr, err := net.ResolveTCPAddr("tcp", path)
-	if err != nil {
-		return os.File{}, fmt.Errorf("cannot resolve socket address: %v", err)
-	}
-
-	listener, err := net.ListenTCP("tcp", addr)
-	if err != nil {
-		return os.File{}, fmt.Errorf("cannot bind socket: %v", err)
-	}
-
-	file, err := listener.File()
-	if err != nil {
-		return os.File{}, fmt.Errorf("failed to extra fd from listener: %v", err)
-	}
-
-	return *file, err
+func getDestConn(connectAddr string) (net.Conn, error) {
+	fields := strings.SplitN(connectAddr, ":", 2)
+	addr := strings.Join(fields[1:], "")
+	return net.Dial(fields[0], addr)
 }
 
