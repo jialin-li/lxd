@@ -1678,7 +1678,6 @@ func btrfsSnapshot(source string, dest string, readonly bool) error {
 	}
 
 	return err
-	// return fmt.Errorf("source=%s, dest=%s, output=%s", source, dest, output)
 }
 
 func (s *storageBtrfs) CopyVolume(srcPool string, srcVol string, dstPool string, dstVol string, readonly bool) error {
