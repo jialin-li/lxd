@@ -87,7 +87,9 @@ func run(args *Args) error {
 			fmt.Fprintf(os.Stderr, "error: Failed to accept new connection: %v\n", err)
 			continue
 		}
-
+		fmt.Printf("Accepted a new connection\n")
+		// b, err := ioutil.ReadAll(srcConn)
+		// fmt.Printf("%s %d", b, len(b))
 		// Connect to the target
 		dstConn, err := getDestConn(connectAddr)
 		if err != nil {
@@ -95,6 +97,7 @@ func run(args *Args) error {
 			srcConn.Close()
 			continue
 		}
+		fmt.Printf("Created dest connection and about to copy\n")
 
 		go io.Copy(srcConn, dstConn)
 		go io.Copy(dstConn, srcConn)
