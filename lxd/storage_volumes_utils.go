@@ -341,16 +341,32 @@ func storagePoolVolumeDBCreate(s *state.State, poolName string, volumeName, volu
 
 func storagePoolVolumeCreateInternal(state *state.State, poolName string, volumeName, volumeDescription string, volumeTypeName string, volumeConfig map[string]string, source string) error {
 	var err error
+	var srcfields []string
+
 	// if it's a copy then override volume Description, TypeName and Config
 	if source != "" {
 		// parse out the source pool and volume
-		srcfields := strings.SplitN(source, "/", 2)
+		srcfields = strings.SplitN(source, "/", 2)
 		if len(srcfields) != 2 {
 			return fmt.Errorf("Missing storage pool or volume parameter")
 		}
-		volumeConfig, volumeDescription, err = storagePoolVolumeDBGet(state, srcfields[0], srcfields[1], volumeTypeName)
+
+		// only copy over config if the src pool and dst pool is the same type
+		_, srcStorage, err := state.DB.StoragePoolGet(srcfields[0])
 		if err != nil {
-			return fmt.Errorf("Fail to retrieve the source config and description")
+			return fmt.Errorf("Fail to retrieve the source pool configuration")
+		}
+
+		_, dstStorage, err := state.DB.StoragePoolGet(poolName)
+		if err != nil {
+			return fmt.Errorf("Fail to retrieve the dest pool configuration")
+		}
+
+		if srcStorage.Driver == dstStorage.Driver {
+			volumeConfig, volumeDescription, err = storagePoolVolumeDBGet(state, srcfields[0], srcfields[1], volumeTypeName)
+			if err != nil {
+				return fmt.Errorf("Fail to retrieve the source config and description")
+			}
 		}
 	}
 
