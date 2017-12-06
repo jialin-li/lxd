@@ -73,14 +73,8 @@ func killProxyProc(devPath string) error {
 	if err != nil {
 		return err
 	}
-
-	// _, _ := os.FindProcess(pid)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Sending the kill signal to %d!!!\n\n", pid)
-	syscall.Kill(pid, syscall.SIGKILL)
+	
+	syscall.Kill(pid, syscall.SIGINT)
 	os.Remove(devPath)	
 	
 	return nil

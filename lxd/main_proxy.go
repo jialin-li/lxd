@@ -168,13 +168,11 @@ func cleanupUnixSocket(listenAddr string) error {
 
 func handleSignal(listenAddr string) {
 	sigc := make(chan os.Signal, 1)
-	signal.Notify(sigc, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGINT)
+	signal.Notify(sigc, os.Interrupt, syscall.SIGINT)
 	go func() {
-		// Wait for a SIGINT or SIGKILL:
+		// Wait for a SIGINT
 		sig := <-sigc
-		fmt.Printf("I AM DONE WAITING")
 		fmt.Fprintf(os.Stdout, "Caught signal %s: cleaning up...", sig)
-		os.Create("signaltest")
 		err := cleanupUnixSocket(listenAddr)
 		if err != nil {
 			fmt.Fprintf(os.Stdout, "Error unlinking unix socket: %v", err)
