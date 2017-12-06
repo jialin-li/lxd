@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"syscall"
 
 	"github.com/lxc/lxd/shared"	
 )

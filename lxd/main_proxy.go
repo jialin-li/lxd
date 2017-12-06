@@ -5,9 +5,10 @@ import (
 	"io"
 	"net"
 	"os"	
+	"os/signal"
 	"strings"
-	"syscall"
 	"strconv"
+	"syscall"	
 
 	"github.com/lxc/lxd/shared"
 )
@@ -96,7 +97,6 @@ func run(args *Args) error {
 			srcConn.Close()
 			continue
 		}
-		fmt.Printf("Created dest connection and about to copy\n")
 
 		go io.Copy(srcConn, dstConn)
 		go io.Copy(dstConn, srcConn)
