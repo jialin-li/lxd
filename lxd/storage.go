@@ -227,7 +227,7 @@ type storage interface {
 		op *operation,
 		containerOnly bool) error
 
-	CopyVolume(srcPool string, srcVol string, dstPool string, dstVolume string, readonly bool) error
+	CopyVolume(srcPool string, srcVol string, dstPool string, dstVol string, readonly bool) error
 }
 
 func storageCoreInit(driver string) (storage, error) {

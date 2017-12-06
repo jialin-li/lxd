@@ -12,14 +12,13 @@ import (
 	"syscall"
 
 	"github.com/gorilla/websocket"
+	"github.com/pborman/uuid"
 
 	"github.com/lxc/lxd/lxd/util"
 	"github.com/lxc/lxd/shared"
 	"github.com/lxc/lxd/shared/api"
 	"github.com/lxc/lxd/shared/idmap"
 	"github.com/lxc/lxd/shared/logger"
-
-	"github.com/pborman/uuid"
 )
 
 var zfsUseRefquota = "false"
@@ -30,12 +29,12 @@ type storageZfs struct {
 	storageShared
 }
 
-func (s *storageZfs) CopyVolume(srcPool string, srcVol string, dstPool string, dstVolume string, readonly bool) error {
+func (s *storageZfs) CopyVolume(srcPool string, srcVol string, dstPool string, dstVol string, readonly bool) error {
 	var dstMountPoint string
 
 	// copy within the same storage pool
 	if srcPool == dstPool {
-		dstMountPoint = getStoragePoolVolumeMountPoint(dstPool, dstVolume)
+		dstMountPoint = getStoragePoolVolumeMountPoint(dstPool, dstVol)
 
 		_, err := s.StoragePoolMount()
 		if err != nil {
@@ -52,7 +51,7 @@ func (s *storageZfs) CopyVolume(srcPool string, srcVol string, dstPool string, d
 
 		// Clone
 		srcDataset := fmt.Sprintf("custom/%s", srcVol)
-		dstDataset := fmt.Sprintf("custom/%s", dstVolume)
+		dstDataset := fmt.Sprintf("custom/%s", dstVol)
 		return zfsPoolVolumeClone(poolName, srcDataset, snapUUID, dstDataset, dstMountPoint)
 	}
 

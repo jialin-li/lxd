@@ -6,6 +6,8 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/pborman/uuid"
+
 	"github.com/lxc/lxd/lxd/db"
 	"github.com/lxc/lxd/shared"
 	"github.com/lxc/lxd/shared/api"
@@ -21,8 +23,79 @@ type storageCeph struct {
 }
 
 // storagepool/volume s
-func (s *storageCeph) CopyVolume(srcPool string, srcVol string, dstPool string, dstVolume string, readonly bool) error {
-	return nil
+func (s *storageCeph) CopyVolume(srcPool string, srcVol string, dstPool string, dstVol string, readonly bool) error {
+	if srcPool == dstPool {
+		// NOTE: problem to solve is to identify if the srcVol is itself a snapshot
+		// bc if it is, we don't want to create a snapshot
+		// sourceIsSnapshot := source.IsSnapshot()
+		srcVolumeName := fmt.Sprintf("%s_%s", storagePoolVolumeTypeNameCustom, srcVol)
+		dstVolumeName := fmt.Sprintf("%s_%s", storagePoolVolumeTypeNameCustom, dstVol)
+		// if sourceIsSnapshot {
+		// 	sourceContainerOnlyName, sourceSnapshotOnlyName, _ :=
+		// 		containerGetParentAndSnapshotName(sourceContainerName)
+		// 	oldVolumeName = fmt.Sprintf("%s/container_%s@snapshot_%s",
+		// 		s.OSDPoolName, sourceContainerOnlyName,
+		// 		sourceSnapshotOnlyName)
+		// }
+		// check storage config
+		if s.pool.Config["ceph.rbd.clone_copy"] != "" &&
+			!shared.IsTrue(s.pool.Config["ceph.rbd.clone_copy"]) {
+
+			// full copy
+			err := cephRBDVolumeCopy(s.ClusterName, srcVolumeName, dstVolumeName,
+				s.UserName)
+			if err != nil {
+				logger.Debugf(`Failed to create full RBD copy "%s" -> `+
+					`"%s": %s`, srcVolumeName, dstVolumeName, err)
+				return err
+			}
+		} else {
+			// copy sparse
+			// protect volume so we can create clones of it
+			// snapshot
+			snapUUID := fmt.Sprintf("copy-%s", uuid.NewRandom().String())
+			err := cephRBDSnapshotProtect(s.ClusterName, s.OSDPoolName,
+				srcVolumeName, storagePoolVolumeTypeNameCustom,
+				snapUUID, s.UserName)
+			if err != nil {
+				logger.Errorf(`Failed to protect snapshot for RBD storage `+
+					`volume for image "%s" on storage pool "%s": %s`,
+					snapUUID, s.pool.Name, err)
+				return err
+			}
+
+			err = cephRBDCloneCreate(s.ClusterName, s.OSDPoolName,
+				srcVolumeName, storagePoolVolumeTypeNameCustom,
+				snapUUID, s.OSDPoolName, dstVolumeName,
+				storagePoolVolumeTypeNameCustom, s.UserName)
+			if err != nil {
+				logger.Errorf(`Failed to clone new RBD storage volume for `+
+					`%s: %s`, dstVolumeName, err)
+				return err
+			}
+		}
+
+		_, err := cephRBDVolumeMap(s.ClusterName, s.OSDPoolName, dstVolumeName,
+			storagePoolVolumeTypeNameCustom, s.UserName)
+		if err != nil {
+			logger.Errorf(`Failed to map RBD storage volume for custom volume `+
+				`%s on storage pool "%s": %s`, dstVolumeName, s.pool.Name, err)
+			return err
+		}
+
+		// not sure if this is needed lol
+		volumeMntPoint := getStoragePoolVolumeMountPoint(s.pool.Name, s.volume.Name)
+		err = os.MkdirAll(volumeMntPoint, 0711)
+		if err != nil {
+			logger.Errorf(`Failed to create mountpoint "%s" for RBD `+
+				`storage volume "%s" on storage pool "%s": %s"`,
+				volumeMntPoint, s.volume.Name, s.pool.Name, err)
+			return err
+		}
+	}
+
+	// FIXME: Implement cross storage copy support, cannot create sparse copy on another storage pool
+	return fmt.Errorf("Cross storage pool copy is not yet implemented")
 }
 
 func (s *storageCeph) StorageCoreInit() error {
