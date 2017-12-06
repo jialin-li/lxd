@@ -88,8 +88,7 @@ func run(args *Args) error {
 			continue
 		}
 		fmt.Printf("Accepted a new connection\n")
-		// b, err := ioutil.ReadAll(srcConn)
-		// fmt.Printf("%s %d", b, len(b))
+		
 		// Connect to the target
 		dstConn, err := getDestConn(connectAddr)
 		if err != nil {
@@ -136,5 +135,31 @@ func getDestConn(connectAddr string) (net.Conn, error) {
 	fields := strings.SplitN(connectAddr, ":", 2)
 	addr := strings.Join(fields[1:], "")
 	return net.Dial(fields[0], addr)
+}
+
+func cleanupUnixSocket(listenAddr string) error {
+	fields := strings.SplitN(listenAddr, ":", 2)
+	addr := strings.Join(fields[1:], "")
+	if fields[0] == "unix" {
+		err := syscall.Unlink(addr)
+		return err
+	}
+	return nil
+}
+
+func handleSignal(listenAddr string) {
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc, os.Interrupt, syscall.SIGINT)
+	go func() {
+		// Wait for a SIGINT
+		sig := <-sigc
+		fmt.Fprintf(os.Stdout, "Caught signal %s: cleaning up...", sig)
+		err := cleanupUnixSocket(listenAddr)
+		if err != nil {
+			fmt.Fprintf(os.Stdout, "Error unlinking unix socket: %v", err)
+		}
+		// And we're done:
+		os.Exit(0)
+	}()
 }
 

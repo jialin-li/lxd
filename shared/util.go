@@ -848,7 +848,7 @@ func RunCommandGetPid(name string, arg ...string) (int, error) {
 	cmd.Stdout = os.Stdout
     cmd.Stderr = os.Stderr
 	err := cmd.Start()
-
+	go cmd.Wait()
 	if err != nil {
 		err := RunError{
 			msg: fmt.Sprintf("Failed to run: %s %s: %s", name, strings.Join(arg, " ")),
