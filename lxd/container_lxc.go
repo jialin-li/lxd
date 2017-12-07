@@ -1844,6 +1844,7 @@ func (c *containerLXC) startCommon() (string, error) {
 	c.removeUnixDevices()
 	c.removeDiskDevices()
 	c.removeNetworkFilters()
+	c.removeProxyDevices()
 
 	var usbs []usbDevice
 	var gpus []gpuDevice
@@ -2234,6 +2235,8 @@ func (c *containerLXC) Start(stateful bool) error {
 		return err
 	}
 
+	c.restartProxyDevices()
+
 	logger.Info("Started container", ctxMap)
 
 	return nil
@@ -2551,6 +2554,12 @@ func (c *containerLXC) OnStop(target string) error {
 		err = c.removeNetworkFilters()
 		if err != nil {
 			logger.Error("Unable to remove network filters", log.Ctx{"container": c.Name(), "err": err})
+		}
+
+		// Clean all proxy devices
+		err = c.removeProxyDevices()
+		if err != nil {
+			logger.Error("Unable to remove proxy devices", log.Ctx{"container": c.Name(), "err": err})
 		}
 
 		// Reboot the container
@@ -2916,6 +2925,7 @@ func (c *containerLXC) cleanup() {
 	c.removeUnixDevices()
 	c.removeDiskDevices()
 	c.removeNetworkFilters()
+	c.removeProxyDevices()
 
 	// Remove the security profiles
 	AADeleteProfile(c)
@@ -3950,6 +3960,11 @@ func (c *containerLXC) Update(args db.ContainerArgs, userRequested bool) error {
 						}
 					}
 				}
+			} else if m["type"] == "proxy" {
+				err = c.removeProxyDevice(k)
+				if err != nil {
+					return err
+				}
 			}
 		}
 
@@ -4043,6 +4058,11 @@ func (c *containerLXC) Update(args db.ContainerArgs, userRequested bool) error {
 					logger.Error(msg)
 					return fmt.Errorf(msg)
 				}
+			} else if m["type"] == "proxy" {
+				err = c.insertProxyDevice(k, m)
+				if err != nil {
+					return err
+				}
 			}
 		}
 
@@ -4070,6 +4090,11 @@ func (c *containerLXC) Update(args db.ContainerArgs, userRequested bool) error {
 					if err != nil {
 						return err
 					}
+				}
+			} else if m["type"] == "proxy" {
+				err = c.updateProxyDevice(k, m)
+				if err != nil {
+					return err
 				}
 			}
 		}
@@ -5967,6 +5992,126 @@ func (c *containerLXC) removeUnixDevices() error {
 	}
 
 	return nil
+}
+
+func (c *containerLXC) insertProxyDevice(name string, m types.Device) error {
+	fmt.Printf("Adding proxy device %s to container %s\n", name, c.name)
+	if !c.IsRunning() {
+		return fmt.Errorf("Can't add proxy device to stopped container")
+	}
+
+	proxyValues, err := setupProxyProcInfo(c, m)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("the proxy dev info is %v\n", *proxyValues)
+	proxyPid, err := shared.RunCommandGetPid(
+											c.state.OS.ExecPath,
+											"proxydevstart",
+											proxyValues.listenPid,
+											proxyValues.listenAddr,
+											proxyValues.connectPid,
+											proxyValues.connectAddr,
+											"0")
+	if err != nil {
+		return fmt.Errorf("Error occurred when starting proxy device: %s", err)
+	}
+
+	err = createProxyDevInfoFile(c.name, name, proxyPid)
+	if err != nil {
+		process, _ := os.FindProcess(proxyPid)
+		process.Kill()
+		return fmt.Errorf("Error occurred when writing metadata for proxy process: %s", err)
+	}
+
+	return nil
+}
+
+func (c *containerLXC) removeProxyDevice(devName string) error {
+	fmt.Printf("Removing single proxy device %s from container %s\n", devName, c.name)
+	if !c.IsRunning() {
+		return fmt.Errorf("Can't remove proxy device from stopped container")
+	}
+
+	devPath := filepath.Join(c.DevicesPath(), devName)
+	err := killProxyProc(devPath)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *containerLXC) removeProxyDevices() error {
+	fmt.Printf("Removing all proxy devices from container %s\n", c.name)
+
+	for _, devName := range c.expandedDevices.DeviceNames() {
+		m := c.expandedDevices[devName]
+
+		if m["type"] == "proxy" {
+			devPath := filepath.Join(c.DevicesPath(), devName)
+			err := killProxyProc(devPath)
+			if err != nil {
+				fmt.Printf("Error removing proxy device '%s' for container %s: %s\n", devName, c.name, err)
+			}
+		}
+	}
+	return nil
+}
+
+func (c *containerLXC) updateProxyDevice(devName string, m types.Device) error {
+	fmt.Printf("Updating proxy device %s from container %s\n", devName, c.name)
+	if !c.IsRunning() {
+		return fmt.Errorf("Can't update proxy device in stopped container")
+	}
+
+	fmt.Printf("updating the proxy device")
+	proxyValues, err := setupProxyProcInfo(c, m)
+	if err != nil {
+		return err
+	}
+
+	devPath := filepath.Join(c.DevicesPath(), devName)
+	err = killProxyProc(devPath)
+
+	if err != nil {
+		return fmt.Errorf("Error occurred when removing old proxy device")
+	}
+
+	proxyPid, err := shared.RunCommandGetPid(
+											c.state.OS.ExecPath,
+											"proxydevstart",
+											proxyValues.listenPid,
+											proxyValues.listenAddr,
+											proxyValues.connectPid,
+											proxyValues.connectAddr,
+											"0")
+	if err != nil {
+		return fmt.Errorf("Error occurred when starting new proxy device")
+	}
+
+	err = createProxyDevInfoFile(c.name, devName, proxyPid)
+	if err != nil {
+		process, _ := os.FindProcess(proxyPid)
+		process.Kill()
+		return fmt.Errorf("Error occurred when writing metadata for proxy process")
+	}
+
+	return nil
+}
+
+func (c *containerLXC) restartProxyDevices() {
+	fmt.Printf("--------Restarting all proxy devices for container %s--------\n", c.name)
+	for _, name := range c.expandedDevices.DeviceNames() {
+		m := c.expandedDevices[name]
+		if m["type"] == "proxy" {
+			err := c.insertProxyDevice(name, m)
+			if err != nil {
+				fmt.Printf("Error when starting proxy device '%s' for container %s: %s\n", name, c.name, err)
+			}
+		}
+	}
 }
 
 // Network device handling

@@ -436,7 +436,6 @@ func (d *Daemon) init() error {
 	if err != nil {
 		return fmt.Errorf("cannot start API endpoints: %v", err)
 	}
-
 	// Run the post initialization actions
 	err = d.Ready()
 	if err != nil {
