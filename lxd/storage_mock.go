@@ -14,6 +14,10 @@ type storageMock struct {
 	storageShared
 }
 
+func (s *storageMock) CopyVolume(srcPool string, srcVol string, dstPool string, dstVolume string, readonly bool) error {
+	return nil
+}
+
 func (s *storageMock) StorageCoreInit() error {
 	s.sType = storageTypeMock
 	typeName, err := storageTypeToString(s.sType)

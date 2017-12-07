@@ -226,6 +226,8 @@ type storage interface {
 		srcIdmap *idmap.IdmapSet,
 		op *operation,
 		containerOnly bool) error
+
+	CopyVolume(srcPool string, srcVol string, dstPool string, dstVol string, readonly bool) error
 }
 
 func storageCoreInit(driver string) (storage, error) {

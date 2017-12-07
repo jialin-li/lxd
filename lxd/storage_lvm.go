@@ -23,6 +23,27 @@ type storageLvm struct {
 	storageShared
 }
 
+func (s *storageLvm) CopyVolume(srcPool string, srcVol string, dstPool string, dstVol string, readonly bool) error {
+	
+	if srcPool == dstPool {
+		dstMountPoint := getStoragePoolVolumeMountPoint(dstPool, dstVol)
+		
+		err := os.MkdirAll(dstMountPoint, 0711)
+		if err != nil {
+			return err
+		}
+		_, err = s.createSnapshotLV(srcPool, srcVol, storagePoolVolumeAPIEndpointCustom, dstVol, storagePoolVolumeAPIEndpointCustom, readonly, s.useThinpool)
+		
+		if err != nil {
+			os.Remove(dstMountPoint)
+			return err
+		}
+		return nil
+	}
+
+	return fmt.Errorf("Copy across storage pools is currently unsupported")
+}
+
 // Only initialize the minimal information we need about a given storage type.
 func (s *storageLvm) StorageCoreInit() error {
 	s.sType = storageTypeLvm

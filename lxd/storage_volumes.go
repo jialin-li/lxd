@@ -140,6 +140,7 @@ func storagePoolVolumesTypeGet(d *Daemon, r *http.Request) Response {
 
 // /1.0/storage-pools/{name}/volumes/{type}
 // Create a storage volume of a given volume type in a given storage pool.
+// If source is specified, copy the volume from source.
 func storagePoolVolumesTypePost(d *Daemon, r *http.Request) Response {
 	req := api.StorageVolumesPost{}
 
@@ -172,9 +173,9 @@ func storagePoolVolumesTypePost(d *Daemon, r *http.Request) Response {
 			`storage volumes of type %s`, req.Type))
 	}
 
-	err = storagePoolVolumeCreateInternal(d.State(), poolName, req.Name, req.Description, req.Type, req.Config)
+	err = storagePoolVolumeCreateInternal(d.State(), poolName, req.Name, req.Description, req.Type, req.Config, req.Source)
 	if err != nil {
-		return InternalError(err)
+		return InternalError(fmt.Errorf("create internal failed %v", err))
 	}
 
 	apiEndpoint, err := storagePoolVolumeTypeNameToAPIEndpoint(req.Type)

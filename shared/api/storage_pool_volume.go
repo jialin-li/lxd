@@ -6,8 +6,9 @@ package api
 type StorageVolumesPost struct {
 	StorageVolumePut `yaml:",inline"`
 
-	Name string `json:"name" yaml:"name"`
-	Type string `json:"type" yaml:"type"`
+	Name   string `json:"name" yaml:"name"`
+	Type   string `json:"type" yaml:"type"`
+	Source string `json:"src" yaml:"src"`
 }
 
 // StorageVolumePost represents the fields required to rename a LXD storage pool volume

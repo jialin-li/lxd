@@ -12,14 +12,13 @@ import (
 	"syscall"
 
 	"github.com/gorilla/websocket"
+	"github.com/pborman/uuid"
 
 	"github.com/lxc/lxd/lxd/util"
 	"github.com/lxc/lxd/shared"
 	"github.com/lxc/lxd/shared/api"
 	"github.com/lxc/lxd/shared/idmap"
 	"github.com/lxc/lxd/shared/logger"
-
-	"github.com/pborman/uuid"
 )
 
 var zfsUseRefquota = "false"
@@ -28,6 +27,36 @@ var zfsRemoveSnapshots = "false"
 type storageZfs struct {
 	dataset string
 	storageShared
+}
+
+func (s *storageZfs) CopyVolume(srcPool string, srcVol string, dstPool string, dstVol string, readonly bool) error {
+	var dstMountPoint string
+
+	// copy within the same storage pool
+	if srcPool == dstPool {
+		dstMountPoint = getStoragePoolVolumeMountPoint(dstPool, dstVol)
+
+		_, err := s.StoragePoolMount()
+		if err != nil {
+			return err
+		}
+
+		// Create snapshot for zfs to clone from
+		poolName := s.getOnDiskPoolName()
+		snapUUID := fmt.Sprintf("copy-%s", uuid.NewRandom().String())
+		err = zfsPoolVolumeSnapshotCreate(poolName, "custom", snapUUID)
+		if err != nil {
+			return err
+		}
+
+		// Clone
+		srcDataset := fmt.Sprintf("custom/%s", srcVol)
+		dstDataset := fmt.Sprintf("custom/%s", dstVol)
+		return zfsPoolVolumeClone(poolName, srcDataset, snapUUID, dstDataset, dstMountPoint)
+	}
+
+	// FIX ME: support copy across storage pool
+	return fmt.Errorf("Copy across storage pool is unsupported")
 }
 
 func (s *storageZfs) getOnDiskPoolName() string {
