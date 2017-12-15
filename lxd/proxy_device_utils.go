@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/lxc/lxd/shared"	
@@ -40,6 +41,16 @@ func setupProxyProcInfo(c container, device map[string]string) (*proxyProcInfo, 
 
 	connectAddr := device["connect"]
 	listenAddr := device["listen"]
+
+	connectionType := strings.SplitN(connectAddr, ":", 2)[0]
+	listenerType := strings.SplitN(listenAddr, ":", 2)[0]
+
+	if connectionType != "tcp" {
+		return nil, fmt.Errorf("Proxy device currently doesnt support the connection type: %s", connectionType)
+	}
+	if listenerType != "tcp" {
+		return nil, fmt.Errorf("Proxy device currently doesnt support the listener type: %s", listenerType)
+	}
 
 	listenPid := "-1"
 	connectPid := "-1"
