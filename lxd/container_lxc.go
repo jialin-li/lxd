@@ -5995,7 +5995,6 @@ func (c *containerLXC) removeUnixDevices() error {
 }
 
 func (c *containerLXC) insertProxyDevice(devName string, m types.Device) error {
-	fmt.Printf("Adding proxy device %s to container %s\n", devName, c.name)
 	if !c.IsRunning() {
 		return fmt.Errorf("Can't add proxy device to stopped container")
 	}
@@ -6029,7 +6028,6 @@ func (c *containerLXC) insertProxyDevice(devName string, m types.Device) error {
 }
 
 func (c *containerLXC) removeProxyDevice(devName string) error {
-	fmt.Printf("Removing single proxy device %s from container %s\n", devName, c.name)
 	if !c.IsRunning() {
 		return fmt.Errorf("Can't remove proxy device from stopped container")
 	}
@@ -6045,7 +6043,6 @@ func (c *containerLXC) removeProxyDevice(devName string) error {
 }
 
 func (c *containerLXC) removeProxyDevices() error {
-	fmt.Printf("Removing all proxy devices from container %s\n", c.name)
 	// Check that we actually have devices to remove
 	if !shared.PathExists(c.DevicesPath()) {
 		return nil
@@ -6075,7 +6072,6 @@ func (c *containerLXC) removeProxyDevices() error {
 }
 
 func (c *containerLXC) updateProxyDevice(devName string, m types.Device) error {
-	fmt.Printf("Updating proxy device %s from container %s\n", devName, c.name)
 	if !c.IsRunning() {
 		return fmt.Errorf("Can't update proxy device in stopped container")
 	}
@@ -6117,7 +6113,6 @@ func (c *containerLXC) updateProxyDevice(devName string, m types.Device) error {
 }
 
 func (c *containerLXC) restartProxyDevices() {
-	fmt.Printf("--------Restarting all proxy devices for container %s--------\n", c.name)
 	for _, name := range c.expandedDevices.DeviceNames() {
 		m := c.expandedDevices[name]
 		if m["type"] == "proxy" {
