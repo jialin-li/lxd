@@ -5994,8 +5994,8 @@ func (c *containerLXC) removeUnixDevices() error {
 	return nil
 }
 
-func (c *containerLXC) insertProxyDevice(name string, m types.Device) error {
-	fmt.Printf("Adding proxy device %s to container %s\n", name, c.name)
+func (c *containerLXC) insertProxyDevice(devName string, m types.Device) error {
+	fmt.Printf("Adding proxy device %s to container %s\n", devName, c.name)
 	if !c.IsRunning() {
 		return fmt.Errorf("Can't add proxy device to stopped container")
 	}
@@ -6018,7 +6018,7 @@ func (c *containerLXC) insertProxyDevice(name string, m types.Device) error {
 		return fmt.Errorf("Error occurred when starting proxy device: %s", err)
 	}
 
-	err = createProxyDevInfoFile(c.name, name, proxyPid)
+	err = createProxyDevInfoFile(c.DevicesPath(), devName, proxyPid)
 	if err != nil {
 		process, _ := os.FindProcess(proxyPid)
 		process.Kill()
@@ -6034,7 +6034,8 @@ func (c *containerLXC) removeProxyDevice(devName string) error {
 		return fmt.Errorf("Can't remove proxy device from stopped container")
 	}
 
-	devPath := filepath.Join(c.DevicesPath(), devName)
+	devFileName := fmt.Sprintf("proxy.%s", devName)
+	devPath := filepath.Join(c.DevicesPath(), devFileName)
 	err := killProxyProc(devPath)
 	if err != nil {
 		return err
@@ -6045,18 +6046,31 @@ func (c *containerLXC) removeProxyDevice(devName string) error {
 
 func (c *containerLXC) removeProxyDevices() error {
 	fmt.Printf("Removing all proxy devices from container %s\n", c.name)
+	// Check that we actually have devices to remove
+	if !shared.PathExists(c.DevicesPath()) {
+		return nil
+	}
 
-	for _, devName := range c.expandedDevices.DeviceNames() {
-		m := c.expandedDevices[devName]
-
-		if m["type"] == "proxy" {
-			devPath := filepath.Join(c.DevicesPath(), devName)
-			err := killProxyProc(devPath)
+	// Load the directory listing
+	devFiles, err := ioutil.ReadDir(c.DevicesPath())
 			if err != nil {
-				fmt.Printf("Error removing proxy device '%s' for container %s: %s\n", devName, c.name, err)
+		return err
+	}
+
+	for _, f := range devFiles {
+		// Skip non-proxy devices
+		if !strings.HasPrefix(f.Name(), "proxy.") {
+			continue
 			}
+
+		// Kill the process
+		devicePath := filepath.Join(c.DevicesPath(), f.Name())
+		err = killProxyProc(devicePath)
+		if err != nil {
+			logger.Error("failed removing proxy device", log.Ctx{"err": err, "path": devicePath})
 		}
 	}
+	
 	return nil
 }
 
@@ -6072,7 +6086,8 @@ func (c *containerLXC) updateProxyDevice(devName string, m types.Device) error {
 		return err
 	}
 
-	devPath := filepath.Join(c.DevicesPath(), devName)
+	devFileName := fmt.Sprintf("proxy.%s", devName)
+	devPath := filepath.Join(c.DevicesPath(), devFileName)
 	err = killProxyProc(devPath)
 
 	if err != nil {
@@ -6091,7 +6106,7 @@ func (c *containerLXC) updateProxyDevice(devName string, m types.Device) error {
 		return fmt.Errorf("Error occurred when starting new proxy device")
 	}
 
-	err = createProxyDevInfoFile(c.name, devName, proxyPid)
+	err = createProxyDevInfoFile(c.DevicesPath(), devName, proxyPid)
 	if err != nil {
 		process, _ := os.FindProcess(proxyPid)
 		process.Kill()

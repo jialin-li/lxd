@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
-
-	"github.com/lxc/lxd/shared"	
 )
 
 type proxyProcInfo struct {
@@ -18,8 +17,9 @@ type proxyProcInfo struct {
 	listenAddr		string
 }
 
-func createProxyDevInfoFile(containerName string, proxyDev string, proxyPid int) error {
-	filePath := shared.VarPath("devices", containerName, proxyDev)
+func createProxyDevInfoFile(devicesPath string, proxyDev string, proxyPid int) error {
+	devFileName := fmt.Sprintf("proxy.%s", proxyDev)
+	filePath := filepath.Join(devicesPath, devFileName)
 	f, err := os.Create(filePath)
 
 	if err != nil {
