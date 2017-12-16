@@ -324,7 +324,6 @@ Proxy devices are processes that forward data to/from ports in the container and
 ports in host. Used to communicate easily between two network namespaces.
 
 There will eventually be three supported connection types:
-
  - `TCP`
  - `UDP`
  - `Unix`
