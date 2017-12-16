@@ -6004,7 +6004,6 @@ func (c *containerLXC) insertProxyDevice(devName string, m types.Device) error {
 		return err
 	}
 
-	fmt.Printf("the proxy dev info is %v\n", *proxyValues)
 	proxyPid, err := shared.RunCommandGetPid(
 											c.state.OS.ExecPath,
 											"proxydevstart",
