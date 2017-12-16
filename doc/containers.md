@@ -319,6 +319,29 @@ uid         | int       | 0                 | no        | UID of the device owne
 gid         | int       | 0                 | no        | GID of the device owner in the container
 mode        | int       | 0660              | no        | Mode of the device in the container
 
+### Type: proxy
+Proxy devices are processes that forward data to/from ports in the container and
+ports in host. Used to communicate easily between two network namespaces.
+
+There will eventually be three supported connection types:
+
+ - `TCP`
+ - `UDP`
+ - `Unix`
+
+Current supported connection types:
+ - `TCP - TCP`
+
+Key         | Type      | Default           | Required  | Description                             
+:--         | :--       | :--               | :--       | :--                                     
+listen      | string    | -                 | yes       | the address and port to bind and listen
+connect     | string    | -                 | yes       | the address and port to connect to
+bind        | string    | -                 | yes       | which side to bind on (host/container)
+
+```
+lxc config device add <container_name> <device-name> proxy listen=<type>:<addr>:<port> listen=<type>:<addr>:<port> bind=<host/container>
+```
+
 ## Instance types
 LXD supports simple instance types. Those are represented as a string
 which can be passed at container creation time.
@@ -380,26 +403,3 @@ used as a shortcut to set both soft and hard limit (e.g.
 `limits.kernel.nofile=3000`) to the same value. A resource with no explicitly
 configured limitation will be inherited from the process starting up the
 container. Note that this inheritance is not enforced by LXD but by the kernel.
-
-### Type: proxy
-Proxy devices are processes that forward data to/from ports in the container and
-ports in host. Used to communicate easily between two network namespaces.
-
-There will eventually be three supported connection types:
-
- - `TCP`
- - `UDP`
- - `Unix`
-
-Current supported connection types:
- - `TCP - TCP`
-
-Key         | Type      | Default           | Required  | Description                             
-:--         | :--       | :--               | :--       | :--                                     
-listen      | string    | -                 | yes       | the address and port to bind and listen
-connect     | string    | -                 | yes       | the address and port to connect to
-bind        | string    | -                 | yes       | which side to bind on (host/container)
-
-```
-lxc config device add <container_name> <device-name> proxy listen=<type>:<addr>:<port> listen=<type>:<addr>:<port> bind=<host/container>
-```
